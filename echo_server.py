@@ -13,4 +13,4 @@ while True:
     except:
         print( "'" + data + "'" )
     msg = 'Received data of size: ' + str( len( data ) )
-    sock.sendto( msg.encode( 'utf-8' ), ( addr[0], 8887 ) )
+    sock.sendto( msg.encode( 'utf-8' ), ( addr[0], addr[1] ) )

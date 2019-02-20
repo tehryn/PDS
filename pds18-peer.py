@@ -14,6 +14,7 @@ from Protokol import Hello, Ack, Disconnect, Error, GetList, List, Message, Prot
 from Node import Db
 from Peer import Peer
 from ConnectionKeeper import ConnectionKeeper
+from Receiver import Receiver
 
 invalid_arguments = 1
 
@@ -86,14 +87,6 @@ possible_arguments = [
     },
 ]
 
-def receiver( ip, port ):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM )
-    sock.bind( (ip, port) )
-    while True:
-        data, addr = sock.recvfrom( 4096 )
-        data = data.decode( 'utf-8' )
-        print( 'Message from ' + addr[0] + ':' + str( addr[1] ) + ": " + data )
-
 settings = dict()
 try:
     settings = get_setting( possible_arguments, sys.argv[1:] )
@@ -131,12 +124,12 @@ error_packet   = Error()
 #sock.sendto( Protokol.encode( str( disconn_packet ) ), ( regIp, regPort ) )
 #sock.sendto( Protokol.encode( '===================' ), ( regIp, regPort ) )
 
-thReceiver = Thread( target = receiver, args=( chatIp, chatPort ) )
-thReceiver.setDaemon( True )
-thReceiver.start()
+receiver = Receiver( False )
+receiver.start( chatIp, chatPort )
 
 keeper = ConnectionKeeper( False )
 keeper.start( regIp, regPort, hello_packet )
+
 
 sleep(21)
 keeper.stop()
