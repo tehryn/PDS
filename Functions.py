@@ -8,13 +8,6 @@ import traceback
 import chardet
 
 #Exception unsave
-def decode_data( data ):
-    """Funkce se pokusi zjistit, v jakem kodovani jsou data reprezentovana a pokusi se je dekodovat."""
-    encoding = chardet.detect( data )[ 'encoding' ]
-    data = data.decode( encoding )
-    return data
-
-#Exception unsave
 def get_setting ( possible_arguments, list_of_arguments ):
     """
     Funkce zpracuje argumenty programu. Parametr possible arguments je pole se slovniky, list_of_arguments
@@ -181,46 +174,6 @@ def print_help( possible_arguments, file_name, output=sys.stdout, author='Vyzkum
         help_str = ', '.join( arg[ 'names' ] )
         output.write( help_str + ' - ' + arg[ 'description' ] + '\n\n' )
     output.write( author + '\n' )
-
-#Exception save on correct use
-def get_data_from_xml( token, page ):
-    """Funkce nalezne potrebny obsah tokenu v xml strance. Vrati mnozinu vsech techto obsahu."""
-    data  = set()
-    found = True
-    while ( found ):
-        found = False
-        idx1  = page.find( '<' + token )
-        if ( idx1 >= 0 ):
-            idx1 = page.find( '>', idx1 )
-            if ( idx1 >= 0 ):
-                idx2 = page.find( '</' + token )
-                if ( idx2 >= 0 and idx2 > idx1 ):
-                    found = True
-                    data.add( page[ idx1+1:idx2 ].strip() )
-                    page = page[idx2+1:]
-    return data
-
-def decode_page( page, response ):
-    """
-    Z odpovedi serveru zjisti kodovani a dekoduje stranku.
-    """
-    encoding = 'utf-8'
-    idx = response.find( 'charset=' )
-    if ( idx >= 0 ):
-        encoding = response[ idx + 8 : ]
-        idx = encoding.find( '\n' )
-        if ( idx >= 0  ):
-            encoding = encoding[ :idx].strip()
-        else:
-            encoding = 'utf-8'
-    try:
-        page = page.decode( encoding )
-    except:
-        try:
-            page = page.decode( encoding, errors='ignore' )
-        except:
-            raise ValueError('Nelze dekodovat stranku')
-    return page
 
 def find_nth( string, substr, n ):
     """Funkce najde N-ty prvek v retezci. Pokud je prvek nalezen, je vracen jeho index, jinak je vracena -1"""

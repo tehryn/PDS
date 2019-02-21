@@ -107,15 +107,17 @@ chatPort = int( settings[ 'chat-port' ][0] )
 
 hello_packet   = Hello( settings['username'][0], settings['chat-ip'][0], settings['chat-port'][0] )
 getList_packet = GetList()
-ack_packet     = Ack()
 list_packet    = List()
 message_packet = Message()
 update_packet  = Update()
 disconn_packet = Disconnect()
 error_packet   = Error()
+
+receiver = Receiver( False )
+receiver.start( sock, chatIp, chatPort )
+
 #sock.sendto( Protokol.encode( '===================' ), ( regIp, regPort ) )
 #sock.sendto( Protokol.encode( str( hello_packet ) ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( str( getList_packet ) ), ( regIp, regPort ) )
 #sock.sendto( Protokol.encode( str( ack_packet ) ), ( regIp, regPort ) )
 #sock.sendto( Protokol.encode( list_packet.to_string( [ Peer('xlogin00', '0.0.0.0', '0'), Peer('xlogin01', '0.0.0.1', '1') ] ) ), ( regIp, regPort ) )
 #sock.sendto( Protokol.encode( message_packet.to_string( 'xlogin00', 'xlogin01', 'Hello world' ) ), ( regIp, regPort ) )
@@ -124,12 +126,11 @@ error_packet   = Error()
 #sock.sendto( Protokol.encode( str( disconn_packet ) ), ( regIp, regPort ) )
 #sock.sendto( Protokol.encode( '===================' ), ( regIp, regPort ) )
 
-receiver = Receiver( False )
-receiver.start( chatIp, chatPort )
-
 keeper = ConnectionKeeper( False )
-keeper.start( regIp, regPort, hello_packet )
+keeper.start( sock, regIp, regPort, hello_packet )
 
+sleep( 2 )
+sock.sendto( Protokol.encode( str( getList_packet ) ), ( regIp, regPort ) )
 
 sleep(21)
 keeper.stop()

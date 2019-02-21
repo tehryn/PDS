@@ -3,8 +3,11 @@ from threading import Lock
 class Protokol( object ):
     _id = 0
     _lock = Lock()
-    
+
     def __init__( self ):
+        pass
+
+    def getObj( self ):
         pass
 
     @staticmethod
@@ -24,8 +27,11 @@ class Hello( Protokol ):
         self._ip = ip
         self._port = port
 
+    def getObj( self ):
+        return { 'username' : self._username, 'ip' : self._ip, 'port' : self._port }
+
     def goodbye( self ):
-        return '{"type":"hello", "txid":' + str( Protokol._id ) + ', "username":"' + self._username + '", "ipv4":"0.0.0.0", "port": ' + self._port + '}'
+        return '{"type":"hello", "txid":' + str( Protokol._id ) + ', "username":"' + self._username + '", "ipv4":"0.0.0.0", "port":0}'
 
     def __str__( self ):
         return '{"type":"hello", "txid":' + str( Protokol._id ) + ', "username":"' + self._username + '", "ipv4":"' + self._ip + '", "port": ' + self._port + '}'
@@ -92,8 +98,12 @@ class Disconnect( Protokol ):
         return '{"type":"disconnect", "txid":'+ str( Protokol._id ) +'}'
 
 class Ack( Protokol ):
+    def __init__( self, txid ):
+        super().__init__()
+        self._txid = txid
+
     def __str__( self ):
-        return '{"type":"ack", "txid":'+ str( Protokol._id ) +'}'
+        return '{"type":"ack", "txid":'+ str( self._txid ) +'}'
 
 class Error( Protokol ):
     def __init__( self ):

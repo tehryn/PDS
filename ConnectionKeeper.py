@@ -9,9 +9,8 @@ class ConnectionKeeper( object ):
         self._cond = None
         self._thread = None
 
-    def start( self, ip, port, helloPacket = None ):
-        def _stillAlive( destIp, destPort, helloPacket ):
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM )
+    def start( self, sock, ip, port, helloPacket = None ):
+        def _stillAlive( sock, destIp, destPort, helloPacket ):
             with self._cond:
                 while self._running:
                     sock.sendto( Protokol.encode( str( helloPacket ) ), ( destIp, destPort ) )
@@ -21,7 +20,7 @@ class ConnectionKeeper( object ):
         if not self._running:
             self._running = True
             self._cond = Condition()
-            self._thread = Thread( target = _stillAlive, args=( ip, port, helloPacket ) )
+            self._thread = Thread( target = _stillAlive, args=( sock, ip, port, helloPacket ) )
             self._thread.setDaemon( True )
             self._thread.start()
 
