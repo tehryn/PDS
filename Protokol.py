@@ -11,11 +11,15 @@ class Protokol( object ):
         pass
 
     @staticmethod
-    def encode( message, inc = True ):
+    def encode( packet, inc = True ):
         if inc:
             with Protokol._lock:
                 Protokol._id += 1
-        return message.encode( 'utf-8' )
+        return str( packet ).encode( 'utf-8' )
+
+    @staticmethod
+    def getId():
+        return Protokol._id
 
     def __str__( self ):
         pass
@@ -41,13 +45,9 @@ class GetList( Protokol ):
         return '{"type":"getlist", "txid":' + str( Protokol._id ) + '}'
 
 class List( Protokol ):
-    def __init__( self ):
+    def __init__( self, peers ):
         super().__init__()
-        self._peers = []
-
-    def to_string( self, peers ):
         self._peers = peers
-        return str( self )
 
     def __str__( self ):
         peers = []
@@ -59,30 +59,19 @@ class List( Protokol ):
         return '{"type":"list", "txid":'+ str( Protokol._id ) +', "peers":{' + peers + '}}'
 
 class Message( Protokol ):
-    def __init__( self ):
-        super().__init__()
-        self._from = ""
-        self._to   = ""
-        self._message = ""
-
-    def to_string( self, fr, to, message ):
+    def __init__( self, fr, to, msg ):
         super().__init__()
         self._from = fr
         self._to   = to
-        self._message = message
-        return str( self )
+        self._message = msg
 
     def __str__( self ):
         return '{"type":"message", "txid":'+ str( Protokol._id ) +', "from":"'+ self._from +'", "to":"'+ self._to +'", "message":"'+ self._message +'"}'
 
 class Update( Protokol ):
-    def __init__( self ):
+    def __init__( self, nodes ):
         super().__init__()
-        self._nodes = []
-
-    def to_string( self, nodes ):
         self._nodes = nodes
-        return str( self )
 
     def __str__( self ):
         dbs = []
@@ -106,13 +95,9 @@ class Ack( Protokol ):
         return '{"type":"ack", "txid":'+ str( self._txid ) +'}'
 
 class Error( Protokol ):
-    def __init__( self ):
+    def __init__( self, verbose ):
         super().__init__()
-        self._verbose = ""
-
-    def to_string( self, verbose ):
         self._verbose = verbose
-        return str( self )
 
     def __str__( self ):
         return '{"type":"error", "txid":'+ str( Protokol._id ) +', "verbose": "'+ self._verbose +'"}'

@@ -1,26 +1,26 @@
-import socket
 from threading import Thread, Condition
-from Protokol import Protokol
 
 class ConnectionKeeper( object ):
-    def __init__( self, isNode ):
-        self._isNode = isNode
+    def __init__( self, user, ip, port ):
+        self._ip = ip
+        self._port = port
+        self._user = user
         self._running = False
         self._cond = None
         self._thread = None
 
-    def start( self, sock, ip, port, helloPacket = None ):
-        def _stillAlive( sock, destIp, destPort, helloPacket ):
+    def start( self, sender, destIp, destPort ):
+        def _stillAlive():
             with self._cond:
                 while self._running:
-                    sock.sendto( Protokol.encode( str( helloPacket ) ), ( destIp, destPort ) )
+                    sender.hello( self._user, self._ip, self._port, destIp, destPort )
                     self._cond.wait( 10 )
+            sender.hello( self._user, self._ip, self._port, destIp, destPort, True )
 
-            sock.sendto( Protokol.encode( helloPacket.goodbye() ), ( destIp, destPort ) )
         if not self._running:
             self._running = True
             self._cond = Condition()
-            self._thread = Thread( target = _stillAlive, args=( sock, ip, port, helloPacket ) )
+            self._thread = Thread( target = _stillAlive, args=() )
             self._thread.setDaemon( True )
             self._thread.start()
 

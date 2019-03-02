@@ -7,15 +7,14 @@ Verze: 2.002 (2018-04-10)
 
 import sys
 import socket
-from threading import Thread
+from threading import Lock
+from random import randint
 from time import sleep
 from Functions import get_setting, print_help
-from Protokol import Hello, Ack, Disconnect, Error, GetList, List, Message, Protokol, Update
-from Node import Db
-from Peer import Peer
+from Sender import Sender
 from ConnectionKeeper import ConnectionKeeper
 from Receiver import Receiver
-
+from Protokol import Protokol
 invalid_arguments = 1
 
 author = "Author:\n" + \
@@ -98,22 +97,25 @@ except Exception as e:
         sys.stderr.write( str( e ) + '\n' )
         exit( invalid_arguments )
 
-sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
+sock        = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
+sock_sender = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
 
 regIp    = settings[ 'reg-ip' ][0]
 regPort  = int( settings[ 'reg-port' ][0] )
 chatIp   = settings[ 'chat-ip' ][0]
 chatPort = int( settings[ 'chat-port' ][0] )
 
-hello_packet   = Hello( settings['username'][0], settings['chat-ip'][0], settings['chat-port'][0] )
-getList_packet = GetList()
-list_packet    = List()
-message_packet = Message()
-update_packet  = Update()
-disconn_packet = Disconnect()
-error_packet   = Error()
+#hello_packet   = Hello( settings['username'][0], settings['chat-ip'][0], settings['chat-port'][0] )
+#getList_packet = GetList()
+#list_packet    = List()
+#message_packet = Message()
+#update_packet  = Update()
+#isconn_packet = Disconnect()
+#error_packet   = Error()
 
-receiver = Receiver( False )
+lock = Lock()
+sender = Sender( sock, lock )
+receiver = Receiver( False, sender )
 receiver.start( sock, chatIp, chatPort )
 
 #sock.sendto( Protokol.encode( '===================' ), ( regIp, regPort ) )
@@ -126,11 +128,23 @@ receiver.start( sock, chatIp, chatPort )
 #sock.sendto( Protokol.encode( str( disconn_packet ) ), ( regIp, regPort ) )
 #sock.sendto( Protokol.encode( '===================' ), ( regIp, regPort ) )
 
-keeper = ConnectionKeeper( False )
-keeper.start( sock, regIp, regPort, hello_packet )
+keeper = ConnectionKeeper( settings['username'][0], chatIp, chatPort )
+keeper.start( sender, regIp, regPort )
 
-sleep( 2 )
-sock.sendto( Protokol.encode( str( getList_packet ) ), ( regIp, regPort ) )
+i=0
+while i < 100:
+    r = randint(0,2)
+    sender.hello( str(i), '198.5.4.5', i, regIp, regPort  )
+    i+=1
+    if r == 0:
+        sender.error( 'Error message', regIp, regPort )
+    elif r == 1:
+        sender.getlist( regIp, regPort )
+        sender.ackExpected( Protokol.getId(), 'getlist', regIp, regPort )
+    elif r == 2:
+        sender.list( receiver._db, regIp, regPort )
+        sender.ackExpected( Protokol.getId(), 'list', regIp, regPort )
+    s = randint( 3,6 )
+    sleep( s )
 
-sleep(21)
 keeper.stop()

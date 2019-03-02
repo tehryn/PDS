@@ -1,30 +1,30 @@
-import socket
 import json
-import datetime
-from threading import Thread
-from Protokol import Hello, Ack, Disconnect, Error, GetList, List, Message, Protokol, Update
+import sys
+from threading import Thread, Lock
+from time import sleep, time
+from Protokol import Protokol
 from Peer import Peer
 
 class Receiver( object ):
-    def __init__( self, isNode ):
+    def __init__( self, isNode, sender ):
         self._isNode = isNode
         self._running = False
         self._thread = None
         self._peers = list()
         self._db = list()
-        self._mapper = dict()
-        self._add2mapper = ( None, -1 )
-        self._ackId = 0
+        self._obj = dict()
+        self._kicker = None
+        self._lock = Lock()
+        self._sender = sender
 
     def start( self, sock, ip, port ):
-        def _listener( sock, ip, port ):
+        def _listener():
+            self._running = True
             sock.bind( (ip, port) )
-            noAck = { 'hello', 'update', 'error', '_unknown', 'ack' }
             while self._running:
                 data, addr = sock.recvfrom( 4096 )
-                mapperIdx = addr[0] + ':' + str( addr[1] )
                 data = data.decode( 'utf-8' )
-                print( str( datetime.datetime.now() ) + ': ' + str( addr ) + ": " + data )
+                print( '<<<<<<' + str( addr ) + " " + data )
                 message = None
                 try:
                     message = json.loads( data )
@@ -34,40 +34,48 @@ class Receiver( object ):
                 isValid = False
                 msgType = None
                 answer  = ''
+                sendAck = False
                 if message is not None :
                     isValid, msgType = self.parseMessage( message )
-
                 if msgType is None:
                     answer = "Invalid message format."
                     msgType = '_unknown'
+                if not isValid:
+                    self._sender.error( 'Invalid syntax of received >' + msgType + '< message.', addr[0], addr[1] )
                 elif msgType == '_unknown':
                     answer = "Unknown type of message."
                 elif not isValid:
                     answer = "Received '" + msgType +"' message with invalid syntax."
-                elif msgType == 'hello' and self._add2mapper[0] is not None:
-                    if self._add2mapper[1]:
-                        self._mapper[ mapperIdx ] = ( self._peers[ -1 ].getIp(), self._peers[ -1 ].getPort() )
+                elif msgType == 'hello':
+                    pass
+                elif msgType == 'list':
+                    if self._isNode:
+                        self._sender.error( 'Command list is not supported on peer.', addr[0], addr[1] )
                     else:
-                        if mapperIdx in self._mapper:
-                            del self._mapper[ mapperIdx ]
+                        sendAck = True
                 elif msgType == 'getlist':
-                    answer = List().to_string( self._peers )
+                    if self._isNode:
+                        with self._lock:
+                            self._sender.list( [ item[ 'peer' ] for item in self._peers ], addr[0], addr[1] )
+                        self._sender.ackExpected( Protokol.getId(), 'getlist', addr[0], addr[1] ) #TODO zde je potreba zamek
+                        sendAck = True
+                    else:
+                        self._sender.error( 'Command getList is not supported on peer.', addr[0], addr[1] )
+                elif msgType == 'error':
+                    sys.stderr.write( self._obj[ 'verbose' ] + '\n' )
+                elif msgType == 'ack':
+                    self._sender.ackReceived( self._obj[ 'txid' ] )
                 else:
-                    answer = "Received valid '" + msgType +"' message."
+                    self._sender.error( 'Received valid message.', addr[0], addr[1] )
 
-                if msgType not in noAck:
-                    ackPacket = Ack( self._ackId )
-                    sock.sendto( Protokol.encode( str( ackPacket ), False ), addr )
+                if answer != '':
+                    self._sender.error( answer, addr[0], addr[1] )
 
-                if self._isNode:
-                    if not isValid:
-                        answer += " Received: " +'"' + data + '"'
-                    if answer and mapperIdx in self._mapper:
-                        sock.sendto( Protokol.encode( answer ), ( addr[0], int( self._mapper[ mapperIdx ][1] ) ) )
+                if sendAck:
+                    self._sender.ack( self._obj[ 'txid' ], addr[0], addr[1] )
 
         if not self._running:
-            self._running = True
-            self._thread = Thread( target = _listener, args=( sock, ip, port ) )
+            self._thread = Thread( target = _listener )
             self._thread.setDaemon( True )
             self._thread.start()
 
@@ -99,7 +107,8 @@ class Receiver( object ):
         return ( True, keys )
 
     def getIdxOfUser( self, username ):
-        for idx, peer in enumerate( self._peers ):
+        for idx, item in enumerate( self._peers ):
+            peer = item[ 'peer' ]
             if username == peer.getUsername():
                 return idx
         return -1
@@ -111,27 +120,58 @@ class Receiver( object ):
         return -1
 
     def hello( self, message ):
-        self._add2mapper = ( None, -1 )
+        def _delete():
+            napTime = 30
+            self._lock.acquire()
+            while self._peers:
+                self._lock.release()
+                print( 'Debug: Sleeping for ' + str( napTime ) )
+                sleep( napTime )
+                nextNap = 30
+                self._lock.acquire()
+                currTime = time()
+                delete = list()
+                for idx, item in enumerate( self._peers ):
+                    if item[ 'expires' ] <= currTime:
+                        delete.append( idx )
+                    else:
+                        tmp = item[ 'expires' ] - currTime
+                        print( 'Debug: tmp=' + str( tmp ) )
+                        if tmp < nextNap:
+                            nextNap = tmp
+
+                relative = 0
+                for idx in delete:
+                    print( 'Debug: Deleted ' + str( idx ) )
+                    del self._peers[ idx - relative ]
+                    relative += 1
+                napTime = nextNap
+                print( 'Debug: ' + str( [ str( x[ 'peer' ] ) for x in self._peers ] ) )
+            self._kicker = None
+            self._lock.release()
+
         keys = { 'type' : None, 'username' : None, 'txid' : None, 'ipv4' : None, 'port' : None }
         valid, keys = Receiver._buildObj( message, keys )
         if not valid:
             return False
-        self._ackId = keys[ 'txid' ]
+        self._obj = keys
         if self._isNode:
             idx = self.getIdxOfUser( keys[ 'username' ] )
             if keys[ 'ipv4' ] == '0.0.0.0' and keys[ 'port' ] == 0:
                 if idx >= 0:
                     del self._peers[ idx ]
-                    self._add2mapper = ( False, idx )
             else :
                 peer = Peer( keys[ 'username' ], keys[ 'ipv4' ], str( keys[ 'port' ] ) )
-                self._add2mapper = True
-                if idx < 0:
-                    self._peers.append( peer )
-                    self._add2mapper = ( True, -1 )
-                else:
-                    self._peers[ idx ] = peer
-                    self._add2mapper = ( True, idx )
+                expires = time() + 30
+                with self._lock:
+                    if idx < 0:
+                        self._peers.append( { 'peer' : peer, 'expires':expires } )
+                    else:
+                        self._peers[ idx ] = { 'peer' : peer, 'expires':expires }
+                    if self._kicker is None:
+                        self._kicker = Thread( target = _delete )
+                        self._kicker.setDaemon( True )
+                        self._kicker.start()
         return True
 
     def message( self, message ):
@@ -139,7 +179,7 @@ class Receiver( object ):
         valid, keys = Receiver._buildObj( message, keys )
         if not valid:
             return False
-        self._ackId = keys[ 'txid' ]
+        self._obj = keys
         if self._isNode:
             pass
         return True
@@ -147,23 +187,31 @@ class Receiver( object ):
     def getlist( self, message ):
         keys = { 'type' : None, 'txid' : None }
         valid, keys = Receiver._buildObj( message, keys )
-        self._ackId = keys[ 'txid' ]
+        self._obj = keys
         return valid
 
     def list( self, message ):
         keys = { 'type' : None, 'txid' : None, 'peers' : None }
         valid, keys = Receiver._buildObj( message, keys )
-        self._ackId = keys[ 'txid' ]
+        self._obj = keys
         if not valid:
             return False
-        if self._isNode:
-            pass
+        if not self._isNode:
+            newDb = list()
+            for _, peer in keys['peers'].items():
+                peerKeys = { 'username' : None, 'ipv4' : None, 'port' : None }
+                valid, peerKeys = Receiver._buildObj( peer, peerKeys )
+                if valid:
+                    newDb.append( Peer( peerKeys[ 'username' ], peerKeys[ 'ipv4' ], str( peerKeys[ 'port' ] ) ) )
+                else:
+                    return False
+            self._db = newDb
         return True
 
     def update( self, message ):
         keys = { 'type' : None, 'txid' : None, 'db' : None }
         valid, keys = Receiver._buildObj( message, keys )
-        self._ackId = keys[ 'txid' ]
+        self._obj = keys
         if not valid:
             return False
         if self._isNode:
@@ -173,7 +221,7 @@ class Receiver( object ):
     def disconnect( self, message ):
         keys = { 'type' : None, 'txid' : None }
         valid, keys = Receiver._buildObj( message, keys )
-        self._ackId = keys[ 'txid' ]
+        self._obj = keys
         if not valid:
             return False
         if self._isNode:
@@ -183,7 +231,7 @@ class Receiver( object ):
     def ack( self, message ):
         keys = { 'type' : None, 'txid' : None }
         valid, keys = Receiver._buildObj( message, keys )
-        self._ackId = keys[ 'txid' ]
+        self._obj = keys
         if not valid:
             return False
         if self._isNode:
@@ -193,7 +241,7 @@ class Receiver( object ):
     def error( self, message ):
         keys = { 'type' : None, 'txid' : None, 'verbose' : None }
         valid, keys = Receiver._buildObj( message, keys )
-        self._ackId = keys[ 'txid' ]
+        self._obj = keys
         if not valid:
             return False
         if self._isNode:
