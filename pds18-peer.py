@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""
-Tento skript slouzi ke kolekci odkazu.
-Autor: Jiri Matejka
-Verze: 2.002 (2018-04-10)
-"""
-
 import sys
 import socket
 from threading import Lock
@@ -105,35 +99,18 @@ regPort  = int( settings[ 'reg-port' ][0] )
 chatIp   = settings[ 'chat-ip' ][0]
 chatPort = int( settings[ 'chat-port' ][0] )
 
-#hello_packet   = Hello( settings['username'][0], settings['chat-ip'][0], settings['chat-port'][0] )
-#getList_packet = GetList()
-#list_packet    = List()
-#message_packet = Message()
-#update_packet  = Update()
-#isconn_packet = Disconnect()
-#error_packet   = Error()
-
 lock = Lock()
 sender = Sender( sock, lock )
 receiver = Receiver( False, sender )
 receiver.start( sock, chatIp, chatPort )
 
-#sock.sendto( Protokol.encode( '===================' ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( str( hello_packet ) ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( str( ack_packet ) ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( list_packet.to_string( [ Peer('xlogin00', '0.0.0.0', '0'), Peer('xlogin01', '0.0.0.1', '1') ] ) ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( message_packet.to_string( 'xlogin00', 'xlogin01', 'Hello world' ) ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( update_packet.to_string( [ Db( '1.1.1.0', 'xlogin00', '0.0.0.0', '0' ), Db( '1.1.1.1', 'xlogin01', '0.0.0.1', '1' )  ] ) ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( error_packet.to_string( 'Testing' ) ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( str( disconn_packet ) ), ( regIp, regPort ) )
-#sock.sendto( Protokol.encode( '===================' ), ( regIp, regPort ) )
-
 keeper = ConnectionKeeper( settings['username'][0], chatIp, chatPort )
 keeper.start( sender, regIp, regPort )
 
 i=0
-while i < 100:
-    r = randint(0,2)
+while True:
+    #r = randint(0,4)
+    r = 1
     sender.hello( str(i), '198.5.4.5', i, regIp, regPort  )
     i+=1
     if r == 0:
@@ -144,6 +121,18 @@ while i < 100:
     elif r == 2:
         sender.list( receiver._db, regIp, regPort )
         sender.ackExpected( Protokol.getId(), 'list', regIp, regPort )
+    elif r == 3:
+        sender.message( 'You shall not pass!!!', 'Gandalf', 'Balrog', regIp, regPort )
+        sender.ackExpected( Protokol.getId(), 'message', regIp, regPort )
+    elif r == 4:
+        sender.disconnect( regIp, regPort )
+    elif r == 5:
+        maxx = randint( 10, 40 )
+        idx = 0
+        while idx < maxx:
+            sender.ack( idx, regIp, regPort )
+            sleep( 0.1 )
+            idx += 1
     s = randint( 3,6 )
     sleep( s )
 

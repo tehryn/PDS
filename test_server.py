@@ -7,7 +7,7 @@ from threading import Lock
 sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
 lock = Lock()
 s = Sender( sock, lock )
-receiver = Receiver( True, s )
+receiver = Receiver( False, s )
 receiver.start( sock, '0.0.0.0', 8888 )
 
 while True:

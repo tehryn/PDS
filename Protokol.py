@@ -15,7 +15,8 @@ class Protokol( object ):
         if inc:
             with Protokol._lock:
                 Protokol._id += 1
-        return str( packet ).encode( 'utf-8' )
+        #return str( packet ).encode( 'utf-8' )
+        return str( packet )
 
     @staticmethod
     def getId():
@@ -50,13 +51,7 @@ class List( Protokol ):
         self._peers = peers
 
     def __str__( self ):
-        peers = []
-        idx   = 0
-        for peer in self._peers:
-            peers.append( '"' + str( idx ) + '":' + str( peer ) )
-            idx += 1
-        peers = ', '.join( peers )
-        return '{"type":"list", "txid":'+ str( Protokol._id ) +', "peers":{' + peers + '}}'
+        return '{"type":"list", "txid":'+ str( Protokol._id ) +', "peers":{' + Peer.peerRecord( self._peers ) + '}}'
 
 class Message( Protokol ):
     def __init__( self, fr, to, msg ):
@@ -69,18 +64,12 @@ class Message( Protokol ):
         return '{"type":"message", "txid":'+ str( Protokol._id ) +', "from":"'+ self._from +'", "to":"'+ self._to +'", "message":"'+ self._message +'"}'
 
 class Update( Protokol ):
-    def __init__( self, nodes ):
+    def __init__( self, db ):
         super().__init__()
-        self._nodes = nodes
+        self._db = db
 
     def __str__( self ):
-        dbs = []
-        idx   = 0
-        for node in self._nodes:
-            dbs.append( '"' + str( idx ) + '":' + str( node ) )
-            idx += 1
-        dbs = ', '.join( dbs )
-        return '{"type":"update", "txid":'+ str( Protokol._id ) +', "db":{' + dbs + '}}'
+        return '{"type":"update", "txid":'+ str( Protokol._id ) +', "db":{' + str( self._db ) + '}}'
 
 class Disconnect( Protokol ):
     def __str__( self ):
@@ -101,3 +90,48 @@ class Error( Protokol ):
 
     def __str__( self ):
         return '{"type":"error", "txid":'+ str( Protokol._id ) +', "verbose": "'+ self._verbose +'"}'
+
+class Peer( object ):
+    def __init__( self, username, ip, port ):
+        self._username = username
+        self._ip = ip
+        self._port = port
+
+    def __str__( self ):
+        return '{"username":"' + self._username + '", "ipv4": "' + self._ip + '", "port": ' + self._port + '}'
+
+    def getUsername( self ):
+        return self._username
+
+    def getIp( self ):
+        return self._ip
+
+    def getPort( self ):
+        return self._port
+
+    @staticmethod
+    def peerRecord( peers ):
+        result = []
+        idx   = 0
+        for peer in peers:
+            result.append( '"' + str( idx ) + '":' + str( peer ) )
+            idx += 1
+        return ', '.join( result )
+
+class Db( object ):
+    def __init__( self, ipv4, port ):
+        self._ipv4 = ipv4
+        self._port = str(port)
+        self._peers = list()
+
+    def update( self, peers ):
+        self._peers = peers
+
+    def getPeers( self ):
+        return self._peers
+
+    def getId( self ):
+        return self._ipv4 + ',' + self._port
+
+    def __str__( self ):
+        return '"' + self.getId() + '":{' + Peer.peerRecord( self._peers ) + '}'

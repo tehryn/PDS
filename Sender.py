@@ -1,7 +1,10 @@
-from Protokol import Hello, Ack, Disconnect, Error, GetList, List, Message, Protokol, Update
+import json
+import itertools
 from time import sleep, time
 from sys import stderr
 from threading import Thread, Lock
+from Protokol import Hello, Ack, Disconnect, Error, GetList, List, Message, Protokol, Update, Db
+
 
 class Sender( object ):
     def __init__( self, sock, lock ):
@@ -85,8 +88,10 @@ class Sender( object ):
         self._send( Protokol.encode( packet ), (destIp, destPort) )
         return True
 
-    def update( self, nodes, destIp, destPort ):
-        packet = Update( nodes )
+    def update( self, peers, srcIp, srcPort, destIp, destPort ):
+        db = Db( srcIp, srcPort )
+        db.update( peers )
+        packet = Update( db )
         self._send( Protokol.encode( packet ), (destIp, destPort) )
         return False
 
@@ -105,10 +110,25 @@ class Sender( object ):
         self._send( Protokol.encode( packet ), (destIp, destPort) )
         return False
 
+    def _bencode( self, obj ):
+        if isinstance( obj, int ):
+            return b"i" + str( obj ).encode( 'utf-8' ) + b"e"
+        elif isinstance(obj, str):
+            return self._bencode( obj.encode( "utf-8" ) )
+        elif isinstance( obj, bytes ):
+            return str( len( obj ) ).encode() + b":" + obj
+        else:
+            items = list( obj.items() )
+            items.sort()
+            data = b"d" + b"".join( map( self._bencode, itertools.chain(*items) ) ) + b"e"
+        return data
+
     def _send( self, data, addr ):
         with self._lock:
-            print( '>>>>>>' + str(addr) + ' ' + data.decode( 'utf-8' ) )
+            print( '>>>>>>' + str(addr) + ' ' + data )
             try:
-                self._sock.sendto( data, addr )
+                #obj = json.loads( data )
+                #self._sock.sendto( b"i" + self._bencode( obj ) + b"e", addr )
+                self._sock.sendto( data.encode( 'utf-8' ), addr )
             except:
-                stderr.write( 'Unable to send message to ' + addr[0] + ': ' + str( addr[1] ) )
+                stderr.write( 'Unable to send message to ' + addr[0] + ': ' + str( addr[1] ) + '\n' )

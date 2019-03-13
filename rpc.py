@@ -11,6 +11,5 @@ s = Sender( sock, lock )
 receiver = Receiver( True, s )
 receiver.start( sock, '0.0.0.0', 8887 )
 
-
 while True:
     sleep( 3600 )

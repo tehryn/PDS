@@ -5,7 +5,7 @@ V tomto modulu jsou implementovany společné funkce.
 """
 import sys
 import traceback
-import chardet
+import ipaddress
 
 #Exception unsave
 def get_setting ( possible_arguments, list_of_arguments ):
@@ -182,3 +182,15 @@ def find_nth( string, substr, n ):
         start = string.find( substr, start + len( substr ) )
         n -= 1
     return start
+
+def valid_ipv4( ip ):
+    try:
+        ip = ipaddress.ip_address(ip)
+        return ip.version == 4
+    except:
+        return False
+
+def valid_port( port ):
+    if isinstance( port, str ):
+        return port.isdigit() and ( 1 <= int( port ) <= 65535 )
+    return 1 <= port <= 65535
