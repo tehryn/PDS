@@ -145,7 +145,7 @@ def get_exception_info( custom_info='' ):
     """Metoda vrati veskere informace o aktualnim miste v kodu. Vhodne pro vypis chyb."""
     type_, value_, traceback_ = sys.exc_info()
     error = traceback.format_exception( type_, value_, traceback_ )
-    return custom_info + '\n' + ''.join( error )
+    return str( custom_info ) + '\n' + ''.join( error )
 
 #Exception save on correct use
 def print_help( possible_arguments, file_name, output=sys.stdout, author='Vyzkumna skupina KNOT@FIT' ):

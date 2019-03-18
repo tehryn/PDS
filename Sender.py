@@ -88,10 +88,8 @@ class Sender( object ):
         self._send( Protokol.encode( packet ), (destIp, destPort) )
         return True
 
-    def update( self, peers, srcIp, srcPort, destIp, destPort ):
-        db = Db( srcIp, srcPort )
-        db.update( peers )
-        packet = Update( db )
+    def update( self, dbs, destIp, destPort ):
+        packet = Update( dbs )
         self._send( Protokol.encode( packet ), (destIp, destPort) )
         return False
 

@@ -1,32 +1,46 @@
 from threading import Thread, Condition
 
 class ConnectionKeeper( object ):
-    def __init__( self, user, ip, port ):
-        self._ip = ip
-        self._port = port
-        self._user = user
-        self._running = False
-        self._cond = None
-        self._thread = None
+    def __init__( self ):
+        self._hello  = False
+        self._update = False
+        self._cond = Condition()
+        self._threads = list()
 
-    def start( self, sender, destIp, destPort ):
+    def hello( self, sender, user, ip, port, destIp, destPort ):
         def _stillAlive():
             with self._cond:
-                while self._running:
-                    sender.hello( self._user, self._ip, self._port, destIp, destPort )
+                while self._hello:
+                    sender.hello( user, ip, port, destIp, destPort )
                     self._cond.wait( 10 )
-            sender.hello( self._user, self._ip, self._port, destIp, destPort, True )
+            sender.hello( user, ip, port, destIp, destPort, True )
 
-        if not self._running:
-            self._running = True
-            self._cond = Condition()
-            self._thread = Thread( target = _stillAlive, args=() )
-            self._thread.setDaemon( True )
-            self._thread.start()
+        if not self._hello:
+            self._hello = True
+            th = Thread( target = _stillAlive, args=() )
+            th.setDaemon( True )
+            th.start()
+            self._threads.append( th )
+
+    def update( self, receiver ):
+        def _stillAlive():
+            with self._cond:
+                while self._update:
+                    receiver.sendUpdate()
+                    self._cond.wait( 4 )
+            receiver.sendUpdate( True )
+
+        if not self._update:
+            self._update = True
+            th = Thread( target = _stillAlive, args=() )
+            th.setDaemon( True )
+            th.start()
+            self._threads.append( th )
 
     def stop( self ):
-        if self._running:
-            self._running = False
-            with self._cond:
-                self._cond.notify()
-            self._thread.join()
+        self._hello = False
+        self._update = False
+        with self._cond:
+            self._cond.notifyAll()
+        for th in self._threads:
+            th.join()

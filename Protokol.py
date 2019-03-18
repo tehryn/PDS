@@ -64,12 +64,12 @@ class Message( Protokol ):
         return '{"type":"message", "txid":'+ str( Protokol._id ) +', "from":"'+ self._from +'", "to":"'+ self._to +'", "message":"'+ self._message +'"}'
 
 class Update( Protokol ):
-    def __init__( self, db ):
+    def __init__( self, dbs ):
         super().__init__()
-        self._db = db
+        self._dbs = dbs
 
     def __str__( self ):
-        return '{"type":"update", "txid":'+ str( Protokol._id ) +', "db":{' + str( self._db ) + '}}'
+        return '{"type":"update", "txid":'+ str( Protokol._id ) +', "db":{' + Db.DbRecord( self._dbs ) + '}}'
 
 class Disconnect( Protokol ):
     def __str__( self ):
@@ -130,8 +130,18 @@ class Db( object ):
     def getPeers( self ):
         return self._peers
 
+    def getAddr( self ):
+        return ( self._ipv4, int( self._port ) )
+
     def getId( self ):
         return self._ipv4 + ',' + self._port
 
     def __str__( self ):
         return '"' + self.getId() + '":{' + Peer.peerRecord( self._peers ) + '}'
+
+    @staticmethod
+    def DbRecord( dbs ):
+        result = []
+        for db in dbs:
+            result.append( str( db ) )
+        return ', '.join( result )

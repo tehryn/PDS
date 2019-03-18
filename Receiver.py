@@ -2,26 +2,41 @@ import json
 import sys
 from threading import Thread, Lock
 from time import sleep, time
-from Protokol import Protokol, Peer
+from Protokol import Protokol, Peer, Db
 from Functions import valid_ipv4, valid_port
 
 class Receiver( object ):
-    def __init__( self, isNode, sender ):
+    def __init__( self, ip, port, isNode, sender ):
         self._isNode = isNode
         self._running = False
         self._thread = None
         self._peers = list()
         self._db = list()
         self._obj = dict()
-        self._kicker = None
+        self._bouncer = None
         self._lock = Lock()
         self._sender = sender
-        self._knownNodes = list()
+        self._ip = ip
+        self._port = port
 
-    def start( self, sock, ip, port ):
+    def sendUpdate( self, disconnect=False ):
+        with self._lock:
+            if disconnect:
+                pass
+            else:
+                dbs = [ db[ 'node' ] for db in self._db ]
+                newDb = Db( self._ip, self._port )
+                newDb.update( [ x[ 'peer' ] for x in self._peers if x[ 'dbId' ] is None ] )
+                dbs.append( newDb )
+                for item in self._db:
+                    print( [ item, time() ] )
+                    srvIp, srvPort = item[ 'node' ].getId().split( ',', 2 )
+                    self._sender.update( dbs, srvIp, int( srvPort ) )
+
+    def start( self, sock ):
         def _listener():
             self._running = True
-            sock.bind( (ip, port) )
+            sock.bind( ( self._ip, self._port ) )
             while self._running:
                 data, addr = sock.recvfrom( 4096 )
                 data = data.decode( 'utf-8' )
@@ -40,7 +55,10 @@ class Receiver( object ):
                 if message is not None :
                     isValid, msgType = self.parseMessage( message )
                 if msgType is None:
-                    answer = self._obj[ 'message' ]
+                    if 'message' in self._db:
+                        answer = self._obj[ 'message' ]
+                    else:
+                        answer = 'Unknown type of message.'
                     msgType = '_unknown'
                 elif not isValid:
                     answer = self._obj[ 'message' ]
@@ -76,21 +94,24 @@ class Receiver( object ):
                     if self._isNode:
                         seek = addr[0] + ',' + str( addr[1] )
                         expires = time() + 12
-                        for key, node in self._obj[ 'db' ].items():
-                            srvIp, srvPort = key.split( ',', 2 )
-                            if seek != key:
-                                peers = node.getPeers()
-                                for peer in peers:
-                                    idx = self.getIdxOfUser( peer.getUsername )
-                                    if idx < 0:
-                                        self._peers.append( { 'peer' : peer, 'expires' : None, 'dbId' : key } )
-                            else:
-                                idx = self.getIdxOfNode( key )
-                                if ( idx < 0 ):
-                                    self._db.append( { 'db' : node, 'expires' : expires } )
-                                    self._sender.update( [ x[ 'peer' ] for x in self._peers if x[ 'db' ] ], ip, port, srvIp, srvPort )
-                                else:
-                                    self._knownNodes[ idx ] = { 'ipv4' : srvIp, 'node' : node, }
+                        sendUpdate = list()
+                        with self._lock:
+                            for key, node in self._obj[ 'db' ].items():
+                                srvIp, srvPort = key.split( ',', 2 )
+                                if seek == key:
+                                    peers = node.getPeers()
+                                    self._peers = [ x for x in self._peers if x[ 'dbId' ] is None or x[ 'dbId' ] != key ]
+                                    for peer in peers:
+                                        idx = self.getIdxOfUser( peer.getUsername() )
+                                        if idx < 0:
+                                            self._peers.append( { 'peer' : peer, 'expires' : None, 'dbId' : key } )
+                                if srvIp != self._ip or int( srvPort ) != self._port:
+                                    idx = self.getIdxOfNode( key )
+                                    if ( idx < 0 ):
+                                        sendUpdate.append( ( srvIp, int( srvPort ) ) )
+                                        self._db.append( { 'ipv4' : srvIp, 'node' : node, 'expires' : expires } )
+                                    else:
+                                        self._db[ idx ] = { 'ipv4' : srvIp, 'node' : node, 'expires' : expires }
                     else:
                         answer = 'Command update is not supported on peer'
                 else:
@@ -127,6 +148,59 @@ class Receiver( object ):
 
         return supportedCommands[ message[ 'type' ] ]( message ), message[ 'type' ]
 
+    def _delete( self ):
+        print( 'DELETER started' )
+        napTime = 12
+        self._lock.acquire()
+        while self._peers or self._db:
+            self._lock.release()
+            print( 'DELETER sleeping for ' + str( napTime ) )
+            sleep( napTime )
+            nextNap = 12
+            self._lock.acquire()
+            currTime = time()
+            delete = list()
+            for idx, item in enumerate( self._peers ):
+                if 'dbId' is None:
+                    if item[ 'expires' ] <= currTime:
+                        delete.append( idx )
+                    else:
+                        tmp = item[ 'expires' ] - currTime
+                        if tmp < nextNap:
+                            nextNap = tmp
+
+            relative = 0
+            for idx in delete:
+                del self._peers[ idx - relative ]
+                relative += 1
+
+            delete = list()
+            for idx, item in enumerate( self._db ):
+                if item[ 'expires' ] <= currTime:
+                    delete.append( idx )
+                else:
+                    tmp = item[ 'expires' ] - currTime
+                    if tmp < nextNap:
+                        nextNap = tmp
+
+            keys2delte = set()
+            relative = 0
+            for idx in delete:
+                keys2delte.add( self._db[ idx ][ 'node' ].getId() )
+                del self._db[ idx - relative ]
+                relative += 1
+
+            relative = 0
+            for i, item in enumerate( self._peers ):
+                if item[ 'dbId' ] is not None and item[ 'dbId' ] in keys2delte:
+                    del self._peers[ i - relative ]
+                    relative += 1
+
+            napTime = nextNap
+        print( 'DELETER ended' )
+        self._bouncer = None
+        self._lock.release()
+
     @staticmethod
     def _buildObj( message, keys ):
         for key, item in message.items():
@@ -159,40 +233,13 @@ class Receiver( object ):
         return -1
 
     def getIdxOfNode( self, key ):
-        for idx, node in enumerate( self._knownNodes ):
+        for idx, node in enumerate( self._db ):
             node = node[ 'node' ]
             if key == node.getId():
                 return idx
         return -1
 
     def hello( self, message ):
-        def _delete():
-            napTime = 30
-            self._lock.acquire()
-            while self._peers:
-                self._lock.release()
-                sleep( napTime )
-                nextNap = 30
-                self._lock.acquire()
-                currTime = time()
-                delete = list()
-                for idx, item in enumerate( self._peers ):
-                    if 'dbId' is not None:
-                        if item[ 'expires' ] <= currTime:
-                            delete.append( idx )
-                        else:
-                            tmp = item[ 'expires' ] - currTime
-                            if tmp < nextNap:
-                                nextNap = tmp
-
-                relative = 0
-                for idx in delete:
-                    del self._peers[ idx - relative ]
-                    relative += 1
-                napTime = nextNap
-            self._kicker = None
-            self._lock.release()
-
         keys = { 'type' : None, 'username' : None, 'txid' : None, 'ipv4' : None, 'port' : None }
         valid, keys = Receiver._buildObj( message, keys )
         if not valid:
@@ -212,13 +259,13 @@ class Receiver( object ):
                     peer = Peer( keys[ 'username' ], keys[ 'ipv4' ], str( keys[ 'port' ] ) )
                     expires = time() + 30
                     if idx < 0:
-                        self._peers.append( { 'peer' : peer, 'expires':expires } )
+                        self._peers.append( { 'peer' : peer, 'expires' : expires, 'dbId' : None } )
                     else:
-                        self._peers[ idx ] = { 'peer' : peer, 'expires':expires }
-                    if self._kicker is None:
-                        self._kicker = Thread( target = _delete )
-                        self._kicker.setDaemon( True )
-                        self._kicker.start()
+                        self._peers[ idx ] = { 'peer' : peer, 'expires' : expires, 'dbId' : None }
+                    if self._bouncer is None:
+                        self._bouncer = Thread( target = self._delete )
+                        self._bouncer.setDaemon( True )
+                        self._bouncer.start()
         return True
 
     def message( self, message ):
@@ -286,17 +333,22 @@ class Receiver( object ):
                     self._obj = { 'message' : 'Invalid syntax of UPDATE message (invalid peer record in db record).' }
                     return False
 
-                newDb = list()
+                peers = list()
                 for _, peer in keys[ 'db' ][ key ].items():
                     peerKeys = { 'username' : None, 'ipv4' : None, 'port' : None }
                     valid, peerKeys = Receiver._buildObj( peer, peerKeys )
                     if valid:
-                        newDb.append( Peer( peerKeys[ 'username' ], peerKeys[ 'ipv4' ], str( peerKeys[ 'port' ] ) ) )
+                        peers.append( Peer( peerKeys[ 'username' ], peerKeys[ 'ipv4' ], str( peerKeys[ 'port' ] ) ) )
                     else:
                         self._obj = { 'message' : 'Invalid syntax of UPDATE message (invalid peer record in db record).' }
                         return False
-                self._obj[ 'db' ][ key] = newDb
-                print( self._obj )
+                with self._lock:
+                    if self._bouncer is None:
+                        self._bouncer = Thread( target = self._delete )
+                        self._bouncer.setDaemon( True )
+                        self._bouncer.start()
+                    self._obj[ 'db' ][ key ] = Db( ip, port )
+                    self._obj[ 'db' ][ key ].update( peers )
         return True
 
     def disconnect( self, message ):

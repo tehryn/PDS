@@ -9,9 +9,11 @@ import sys
 import socket
 from threading import Lock
 from Functions import get_setting, print_help
+from ConnectionKeeper import ConnectionKeeper
+from time import sleep
 from Sender import Sender
 from Receiver import Receiver
-from time import sleep
+from Protokol import Db
 invalid_arguments = 1
 
 author = "Author:\n" + \
@@ -52,7 +54,7 @@ possible_arguments = [
     {
         'names'        : [ '--help', '-h' ],
         'optional'     : True,
-        'has_tail'     : 1,
+        'has_tail'     : 0,
         'word_index'   : 'help',
         'prerequisite' : None,
         'description'  : 'Vypise napovedu k programu.'
@@ -76,9 +78,14 @@ regPort = int( settings[ 'reg-port' ][0] )
 
 lock = Lock()
 sender = Sender( sock, lock )
-receiver = Receiver( True, sender )
-receiver.start( sock, regIp, regPort )
-while True:
-    sender.update( [ x['peer'] for x in receiver._peers], '147.229.176.19', 6666 ,'147.229.176.19', 6666 )
-    #sender.update( [ x['peer'] for x in receiver._peers], '127.0.0.1', 7777 if regPort != 8888 else 8888 ,'127.0.0.1', 7777 if regPort == 8888 else 8888 )
-    sleep(4)
+receiver = Receiver( regIp, regPort, True, sender )
+receiver.start( sock )
+keeper = ConnectionKeeper()
+keeper.update( receiver )
+
+dbs = [ db[ 'node' ] for db in receiver._db ]
+newDb = Db( regIp, regPort )
+newDb.update( [ x['peer'] for x in receiver._peers if x[ 'dbId' ] is None ] )
+dbs.append( newDb )
+sender.update( dbs ,'147.229.206.30', 7777 if regPort == 8888 else 8888 )
+sleep(3600)

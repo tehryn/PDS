@@ -73,7 +73,7 @@ possible_arguments = [
     {
         'names'        : [ '--help', '-h' ],
         'optional'     : True,
-        'has_tail'     : 1,
+        'has_tail'     : 0,
         'word_index'   : 'help',
         'prerequisite' : None,
         'description'  : 'Vypise napovedu k programu.'
@@ -101,17 +101,17 @@ chatPort = int( settings[ 'chat-port' ][0] )
 
 lock = Lock()
 sender = Sender( sock, lock )
-receiver = Receiver( False, sender )
-receiver.start( sock, chatIp, chatPort )
+receiver = Receiver( chatIp, chatPort, False, sender )
+receiver.start( sock )
 
-keeper = ConnectionKeeper( settings['username'][0], chatIp, chatPort )
-keeper.start( sender, regIp, regPort )
+keeper = ConnectionKeeper()
+keeper.hello( sender, settings['username'][0], chatIp, chatPort , regIp, regPort )
 
 i=0
 while True:
     #r = randint(0,4)
     r = 1
-    sender.hello( str(i), '198.5.4.5', i, regIp, regPort  )
+    #sender.hello( str(i), '198.5.4.5', i, regIp, regPort  )
     i+=1
     if r == 0:
         sender.error( 'Error message', regIp, regPort )
