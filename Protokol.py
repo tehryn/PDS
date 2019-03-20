@@ -1,4 +1,5 @@
 from threading import Lock
+from json import dumps
 
 class Protokol( object ):
     _id = 0
@@ -36,10 +37,10 @@ class Hello( Protokol ):
         return { 'username' : self._username, 'ip' : self._ip, 'port' : self._port }
 
     def goodbye( self ):
-        return '{"type":"hello", "txid":' + str( Protokol._id ) + ', "username":"' + self._username + '", "ipv4":"0.0.0.0", "port":0}'
+        return '{"type":"hello", "txid":' + str( Protokol._id ) + ', "username":' + dumps( self._username ) + ', "ipv4":"0.0.0.0", "port":0}'
 
     def __str__( self ):
-        return '{"type":"hello", "txid":' + str( Protokol._id ) + ', "username":"' + self._username + '", "ipv4":"' + self._ip + '", "port": ' + self._port + '}'
+        return '{"type":"hello", "txid":' + str( Protokol._id ) + ', "username":' + dumps( self._username ) + ', "ipv4":"' + self._ip + '", "port": ' + self._port + '}'
 
 class GetList( Protokol ):
     def __str__( self ):
@@ -61,7 +62,7 @@ class Message( Protokol ):
         self._message = msg
 
     def __str__( self ):
-        return '{"type":"message", "txid":'+ str( Protokol._id ) +', "from":"'+ self._from +'", "to":"'+ self._to +'", "message":"'+ self._message +'"}'
+        return '{"type":"message", "txid":'+ str( Protokol._id ) +', "from":'+ dumps( self._from ) +', "to":'+ dumps( self._to ) +', "message":'+ dumps( self._message ) +'}'
 
 class Update( Protokol ):
     def __init__( self, dbs ):
@@ -89,7 +90,7 @@ class Error( Protokol ):
         self._verbose = verbose
 
     def __str__( self ):
-        return '{"type":"error", "txid":'+ str( Protokol._id ) +', "verbose": "'+ self._verbose +'"}'
+        return '{"type":"error", "txid":'+ str( Protokol._id ) +', "verbose":'+ dumps( self._verbose ) +'}'
 
 class Peer( object ):
     def __init__( self, username, ip, port ):
@@ -98,7 +99,7 @@ class Peer( object ):
         self._port = port
 
     def __str__( self ):
-        return '{"username":"' + self._username + '", "ipv4": "' + self._ip + '", "port": ' + self._port + '}'
+        return '{"username":' + dumps( self._username ) + ', "ipv4":"' + self._ip + '", "port":' + self._port + '}'
 
     def getUsername( self ):
         return self._username

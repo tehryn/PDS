@@ -89,6 +89,7 @@ class Receiver( object ):
                     if self._isNode:
                         answer = 'Command message is not supported on node.'
                     else:
+                        #self.getIdxOfUser( self._obj[ 'to' ] )
                         sendAck = True
                 elif msgType == 'update':
                     if self._isNode:
@@ -140,28 +141,26 @@ class Receiver( object ):
             'error' : self.error
         }
         if 'type' not in message:
-            self._obj = { 'message' : 'Type of message not specified.' }
+            self._obj = { 'message' : 'Typ zpravy neni specifikovan.' }
             return False, None
         if isinstance( message[ 'type' ], str ) and message[ 'type' ] not in supportedCommands:
-            self._obj = { 'message' : 'Unknown type of message.' }
+            self._obj = { 'message' : 'Neznamy typ zpravy.' }
             return False, '_unknown'
 
         return supportedCommands[ message[ 'type' ] ]( message ), message[ 'type' ]
 
     def _delete( self ):
-        print( 'DELETER started' )
         napTime = 12
         self._lock.acquire()
         while self._peers or self._db:
             self._lock.release()
-            print( 'DELETER sleeping for ' + str( napTime ) )
             sleep( napTime )
-            nextNap = 12
+            nextNap = 12 if self._db else 30
             self._lock.acquire()
             currTime = time()
             delete = list()
             for idx, item in enumerate( self._peers ):
-                if 'dbId' is None:
+                if item['dbId'] is None:
                     if item[ 'expires' ] <= currTime:
                         delete.append( idx )
                     else:
@@ -197,12 +196,11 @@ class Receiver( object ):
                     relative += 1
 
             napTime = nextNap
-        print( 'DELETER ended' )
         self._bouncer = None
         self._lock.release()
 
     @staticmethod
-    def _buildObj( message, keys ):
+    def buildObj( message, keys ):
         for key, item in message.items():
             valid = True
             if key == 'txid':
@@ -241,9 +239,9 @@ class Receiver( object ):
 
     def hello( self, message ):
         keys = { 'type' : None, 'username' : None, 'txid' : None, 'ipv4' : None, 'port' : None }
-        valid, keys = Receiver._buildObj( message, keys )
+        valid, keys = Receiver.buildObj( message, keys )
         if not valid:
-            self._obj = { 'message' : 'Invalid syntax of HELLO message.' }
+            self._obj = { 'message' : 'Neplatny syntax zpravy HELLO.' }
             return False
         self._obj = keys
         if self._isNode:
@@ -253,7 +251,7 @@ class Receiver( object ):
                     if idx >= 0 and self._peers[ idx ][ 'dbId' ] is None:
                         del self._peers[ idx ]
                     else:
-                        self._obj = { 'message' : 'Unauthorized use of HELLO message.' }
+                        self._obj = { 'message' : 'Nelze se odhlasit - uzivatel neni na uzlu prihlasen' }
                         return False
                 else :
                     peer = Peer( keys[ 'username' ], keys[ 'ipv4' ], str( keys[ 'port' ] ) )
@@ -270,9 +268,9 @@ class Receiver( object ):
 
     def message( self, message ):
         keys = { 'type' : None, 'txid' : None, 'from' : None,  'to' : None, 'message' : None }
-        valid, keys = Receiver._buildObj( message, keys )
+        valid, keys = Receiver.buildObj( message, keys )
         if not valid:
-            self._obj = { 'message' : 'Invalid syntax of MESSAGE message.' }
+            self._obj = { 'message' : 'Neplatny syntax zpravy MESSAGE.' }
             return False
         self._obj = keys
         if self._isNode:
@@ -281,36 +279,36 @@ class Receiver( object ):
 
     def getlist( self, message ):
         keys = { 'type' : None, 'txid' : None }
-        valid, keys = Receiver._buildObj( message, keys )
+        valid, keys = Receiver.buildObj( message, keys )
         self._obj = keys
         return valid
 
     def list( self, message ):
         keys = { 'type' : None, 'txid' : None, 'peers' : None }
-        valid, keys = Receiver._buildObj( message, keys )
+        valid, keys = Receiver.buildObj( message, keys )
         self._obj = keys
         if not valid:
-            self._obj = { 'message' : 'Invalid syntax of LIST message.' }
+            self._obj = { 'message' : 'Neplatny syntax zpravy LIST.' }
             return False
         if not self._isNode:
             newDb = list()
             if not isinstance( keys[ 'peers' ], dict ):
-                self._obj = { 'message' : 'Invalid syntax of LIST message (invalid peer record).' }
+                self._obj = { 'message' : 'Neplatny syntax zpravy LIST (neplatny zaznam PEER RECORD).' }
                 return False
             for _, peer in keys['peers'].items():
                 peerKeys = { 'username' : None, 'ipv4' : None, 'port' : None }
-                valid, peerKeys = Receiver._buildObj( peer, peerKeys )
+                valid, peerKeys = Receiver.buildObj( peer, peerKeys )
                 if valid:
                     newDb.append( Peer( peerKeys[ 'username' ], peerKeys[ 'ipv4' ], str( peerKeys[ 'port' ] ) ) )
                 else:
-                    self._obj = { 'message' : 'Invalid syntax of LIST message (invalid peer record).' }
+                    self._obj = { 'message' : 'Neplatny syntax zpravy LIST (neplatny zaznam PEER RECORD).' }
                     return False
             self._db = newDb
         return True
 
     def update( self, message ):
         keys = { 'type' : None, 'txid' : None, 'db' : None }
-        valid, keys = Receiver._buildObj( message, keys )
+        valid, keys = Receiver.buildObj( message, keys )
         self._obj = keys
         if not valid:
             return False
@@ -322,25 +320,25 @@ class Receiver( object ):
                 try:
                     ip, port = key.split( ',', 2 )
                 except:
-                    self._obj = { 'message' : 'Invalid syntax of UPDATE message (invalid db record).' }
+                    self._obj = { 'message' : 'neplatny syntax zpravy MESSAGE (neplatny zaznam DB RECORD).' }
                     return False
 
                 if not valid_ipv4( ip ) or not valid_port( port ):
-                    self._obj = { 'message' : 'Invalid syntax of UPDATE message (invalid ipv4 or port in db record).' }
+                    self._obj = { 'message' : 'neplatny syntax zpravy MESSAGE (neplatny zaznam DB RECORD).' }
                     return False
 
                 if not isinstance( keys[ 'db' ][ key ], dict ):
-                    self._obj = { 'message' : 'Invalid syntax of UPDATE message (invalid peer record in db record).' }
+                    self._obj = { 'message' : 'neplatny syntax zpravy MESSAGE (neplatny zaznam DB RECORD).' }
                     return False
 
                 peers = list()
                 for _, peer in keys[ 'db' ][ key ].items():
                     peerKeys = { 'username' : None, 'ipv4' : None, 'port' : None }
-                    valid, peerKeys = Receiver._buildObj( peer, peerKeys )
+                    valid, peerKeys = Receiver.buildObj( peer, peerKeys )
                     if valid:
                         peers.append( Peer( peerKeys[ 'username' ], peerKeys[ 'ipv4' ], str( peerKeys[ 'port' ] ) ) )
                     else:
-                        self._obj = { 'message' : 'Invalid syntax of UPDATE message (invalid peer record in db record).' }
+                        self._obj = { 'message' : 'neplatny syntax zpravy MESSAGE (neplatny zaznam PEER RECORD uvnitr zaznamu DB RECORD).' }
                         return False
                 with self._lock:
                     if self._bouncer is None:
@@ -353,10 +351,10 @@ class Receiver( object ):
 
     def disconnect( self, message ):
         keys = { 'type' : None, 'txid' : None }
-        valid, keys = Receiver._buildObj( message, keys )
+        valid, keys = Receiver.buildObj( message, keys )
         self._obj = keys
         if not valid:
-            self._obj = { 'message' : 'Invalid syntax of DISCONNECT message.' }
+            self._obj = { 'message' : 'Neplatny syntax zpravy DISCONNECT.' }
             return False
         if self._isNode:
             pass
@@ -364,10 +362,10 @@ class Receiver( object ):
 
     def ack( self, message ):
         keys = { 'type' : None, 'txid' : None }
-        valid, keys = Receiver._buildObj( message, keys )
+        valid, keys = Receiver.buildObj( message, keys )
         self._obj = keys
         if not valid:
-            self._obj = { 'message' : 'Invalid syntax of ACK message.' }
+            self._obj = { 'message' : 'Neplatny syntax zpravy ACK.' }
             return False
         if self._isNode:
             pass
@@ -375,10 +373,10 @@ class Receiver( object ):
 
     def error( self, message ):
         keys = { 'type' : None, 'txid' : None, 'verbose' : None }
-        valid, keys = Receiver._buildObj( message, keys )
+        valid, keys = Receiver.buildObj( message, keys )
         self._obj = keys
         if not valid:
-            self._obj = { 'message' : 'Invalid syntax of ERROR message.' }
+            self._obj = { 'message' : 'Neplatny syntax zpravy ERROR.' }
             return False
         if self._isNode:
             pass

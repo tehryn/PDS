@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import socket
+import os
 from threading import Lock
 from random import randint
 from time import sleep
@@ -9,6 +10,8 @@ from Sender import Sender
 from ConnectionKeeper import ConnectionKeeper
 from Receiver import Receiver
 from Protokol import Protokol
+from FileLock import FileLock
+
 invalid_arguments = 1
 
 author = "Author:\n" + \
@@ -106,34 +109,47 @@ receiver.start( sock )
 
 keeper = ConnectionKeeper()
 keeper.hello( sender, settings['username'][0], chatIp, chatPort , regIp, regPort )
+def auto():
+    i=0
+    while True:
+        #r = randint(0,4)
+        r = 1
+        #sender.hello( str(i), '198.5.4.5', i, regIp, regPort  )
+        i+=1
+        if r == 0:
+            sender.error( 'Error message', regIp, regPort )
+        elif r == 1:
+            sender.getlist( regIp, regPort )
+            sender.ackExpected( Protokol.getId(), 'getlist', regIp, regPort )
+        elif r == 2:
+            sender.list( receiver._db, regIp, regPort )
+            sender.ackExpected( Protokol.getId(), 'list', regIp, regPort )
+        elif r == 3:
+            sender.message( 'You shall not pass!!!', 'Gandalf', 'Balrog', regIp, regPort )
+            sender.ackExpected( Protokol.getId(), 'message', regIp, regPort )
+        elif r == 4:
+            sender.disconnect( regIp, regPort )
+        elif r == 5:
+            maxx = randint( 10, 40 )
+            idx = 0
+            while idx < maxx:
+                sender.ack( idx, regIp, regPort )
+                sleep( 0.1 )
+                idx += 1
+        s = randint( 3,6 )
+        sleep( s )
 
-i=0
-while True:
-    #r = randint(0,4)
-    r = 1
-    #sender.hello( str(i), '198.5.4.5', i, regIp, regPort  )
-    i+=1
-    if r == 0:
-        sender.error( 'Error message', regIp, regPort )
-    elif r == 1:
-        sender.getlist( regIp, regPort )
-        sender.ackExpected( Protokol.getId(), 'getlist', regIp, regPort )
-    elif r == 2:
-        sender.list( receiver._db, regIp, regPort )
-        sender.ackExpected( Protokol.getId(), 'list', regIp, regPort )
-    elif r == 3:
-        sender.message( 'You shall not pass!!!', 'Gandalf', 'Balrog', regIp, regPort )
-        sender.ackExpected( Protokol.getId(), 'message', regIp, regPort )
-    elif r == 4:
-        sender.disconnect( regIp, regPort )
-    elif r == 5:
-        maxx = randint( 10, 40 )
-        idx = 0
-        while idx < maxx:
-            sender.ack( idx, regIp, regPort )
-            sleep( 0.1 )
-            idx += 1
-    s = randint( 3,6 )
-    sleep( s )
-
-keeper.stop()
+    keeper.stop()
+def manual():
+    filename = '.' + settings[ 'id' ][0] + '.commands'
+    fLock = FileLock( filename )
+    while True:
+        lines = list()
+        with fLock:
+            if os.path.isfile( filename ):
+                with open( filename, 'r' ) as file:
+                    lines = file.readlines()
+                os.unlink( filename )
+        print( lines )
+        sleep( 0.5 )
+manual()
