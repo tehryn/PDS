@@ -31,6 +31,5 @@ class FileLock( object ):
                 os.close( self._file )
                 os.unlink( lockName )
 
-
     def __delete__( self, instance ):
         self.__deleteFile()

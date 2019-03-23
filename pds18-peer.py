@@ -2,14 +2,13 @@
 import sys
 import socket
 import os
+import json
 from threading import Lock
-from random import randint
 from time import sleep
 from Functions import get_setting, print_help
 from Sender import Sender
 from ConnectionKeeper import ConnectionKeeper
 from Receiver import Receiver
-from Protokol import Protokol
 from FileLock import FileLock
 
 invalid_arguments = 1
@@ -81,6 +80,14 @@ possible_arguments = [
         'prerequisite' : None,
         'description'  : 'Vypise napovedu k programu.'
     },
+    {
+        'names'        : [ '--test', '-t' ],
+        'optional'     : True,
+        'has_tail'     : 0,
+        'word_index'   : 'test',
+        'prerequisite' : None,
+        'description'  : 'Peer bude odesilat v cyklu nahodne dotazy na uzel'
+    },
 ]
 
 settings = dict()
@@ -104,52 +111,43 @@ chatPort = int( settings[ 'chat-port' ][0] )
 
 lock = Lock()
 sender = Sender( sock, lock )
-receiver = Receiver( chatIp, chatPort, False, sender )
+receiver = Receiver( chatIp, chatPort, False, sender, settings[ 'username' ][0] )
 receiver.start( sock )
 
 keeper = ConnectionKeeper()
 keeper.hello( sender, settings['username'][0], chatIp, chatPort , regIp, regPort )
-def auto():
-    i=0
-    while True:
-        #r = randint(0,4)
-        r = 1
-        #sender.hello( str(i), '198.5.4.5', i, regIp, regPort  )
-        i+=1
-        if r == 0:
-            sender.error( 'Error message', regIp, regPort )
-        elif r == 1:
-            sender.getlist( regIp, regPort )
-            sender.ackExpected( Protokol.getId(), 'getlist', regIp, regPort )
-        elif r == 2:
-            sender.list( receiver._db, regIp, regPort )
-            sender.ackExpected( Protokol.getId(), 'list', regIp, regPort )
-        elif r == 3:
-            sender.message( 'You shall not pass!!!', 'Gandalf', 'Balrog', regIp, regPort )
-            sender.ackExpected( Protokol.getId(), 'message', regIp, regPort )
-        elif r == 4:
-            sender.disconnect( regIp, regPort )
-        elif r == 5:
-            maxx = randint( 10, 40 )
-            idx = 0
-            while idx < maxx:
-                sender.ack( idx, regIp, regPort )
-                sleep( 0.1 )
-                idx += 1
-        s = randint( 3,6 )
-        sleep( s )
 
-    keeper.stop()
-def manual():
-    filename = '.' + settings[ 'id' ][0] + '.commands'
-    fLock = FileLock( filename )
-    while True:
-        lines = list()
-        with fLock:
-            if os.path.isfile( filename ):
-                with open( filename, 'r' ) as file:
-                    lines = file.readlines()
-                os.unlink( filename )
-        print( lines )
-        sleep( 0.5 )
-manual()
+filename = '.' + settings[ 'id' ][0] + '.peercommands'
+fLock = FileLock( filename )
+with fLock:
+    if os.path.isfile( filename ):
+        os.unlink( filename )
+while True:
+    lines = list()
+    with fLock:
+        if os.path.isfile( filename ):
+            with open( filename, 'r' ) as file:
+                lines = file.readlines()
+            os.unlink( filename )
+    for line in lines:
+        cmd = None
+        try:
+            cmd = json.loads( line )
+        except:
+            print( "JSON ERROR - peer" )
+
+        valid, message = receiver.procCommand( cmd, ( regIp, regPort ) )
+        if valid:
+            if isinstance( message, str ):
+                sys.stdout.write( message + '\n' )
+            elif isinstance( message, dict ) and message[ 'type' ] == 'reconnect':
+                regIp = message[ 'ipv4' ]
+                regPort = int( message[ 'port' ] )
+                keeper.stop()
+                keeper.hello( sender, settings['username'][0], chatIp, chatPort , regIp, regPort )
+
+        elif message:
+            sys.stderr.write( 'Error: ' + message + '\n' )
+        else:
+            sys.stderr.write( 'Error: Invalid syntax of command.\n' )
+    sleep( 0.5 )

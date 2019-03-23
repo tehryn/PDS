@@ -25,10 +25,11 @@ class ConnectionKeeper( object ):
     def update( self, receiver ):
         def _stillAlive():
             with self._cond:
+                cmd = { 'type' : "sync" }
                 while self._update:
-                    receiver.sendUpdate()
+                    receiver.procCommand( cmd )
                     self._cond.wait( 4 )
-            receiver.sendUpdate( True )
+            receiver.procCommand( { 'type' : "disconnect" } )
 
         if not self._update:
             self._update = True

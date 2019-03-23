@@ -4,18 +4,26 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
-Sender	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^class Sender( object ):$/;"	class	line:6
-__init__	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def __init__( self, sock, lock ):$/;"	member	line:7	class:Sender
-testAck	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def testAck( self, destIp, destPort, ackId, msgType ):$/;"	member	line:13	class:Sender
-_ackExpected	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^        def _ackExpected( ackId ):$/;"	function	line:14	function:Sender.testAck
-ackExpected	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def ackExpected( self, txid ):$/;"	member	line:31	class:Sender
-ackReceived	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def ackReceived( self, txid ):$/;"	member	line:39	class:Sender
-hello	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def hello( self, username, ipv4, port, destIp, destPort, goodbye = False ):$/;"	member	line:45	class:Sender
-message	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def message( self, message, fr, to, destIp, destPort ):$/;"	member	line:53	class:Sender
-getlist	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def getlist( self, destIp, destPort ):$/;"	member	line:58	class:Sender
-list	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def list( self, peers, destIp, destPort ):$/;"	member	line:63	class:Sender
-update	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def update( self, nodes, destIp, destPort ):$/;"	member	line:68	class:Sender
-disconnect	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def disconnect( self, destIp, destPort ):$/;"	member	line:73	class:Sender
-ack	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def ack( self, txid, destIp, destPort ):$/;"	member	line:78	class:Sender
-error	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def error( self, message, destIp, destPort ):$/;"	member	line:83	class:Sender
-_send	/mnt/sdb1/FIT/PDS/PDS/Sender.py	/^    def _send( self, data, addr ):$/;"	member	line:88	class:Sender
+invalid_arguments	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^invalid_arguments = 1$/;"	variable	line:14
+author	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^         "  FIT VUT v Brne"$/;"	variable	line:20
+possible_arguments	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^possible_arguments = [$/;"	variable	line:22
+settings	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^settings = dict()$/;"	variable	line:93
+settings	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^    settings = get_setting( possible_arguments, sys.argv[1:] )$/;"	variable	line:95
+sock	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^sock        = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )$/;"	variable	line:104
+sock_sender	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^sock_sender = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )$/;"	variable	line:105
+regIp	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^regIp    = settings[ 'reg-ip' ][0]$/;"	variable	line:107
+regPort	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^regPort  = int( settings[ 'reg-port' ][0] )$/;"	variable	line:108
+chatIp	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^chatIp   = settings[ 'chat-ip' ][0]$/;"	variable	line:109
+chatPort	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^chatPort = int( settings[ 'chat-port' ][0] )$/;"	variable	line:110
+lock	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^lock = Lock()$/;"	variable	line:112
+sender	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^sender = Sender( sock, lock )$/;"	variable	line:113
+receiver	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^receiver = Receiver( chatIp, chatPort, False, sender )$/;"	variable	line:114
+keeper	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^keeper = ConnectionKeeper()$/;"	variable	line:117
+filename	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^filename = '.' + settings[ 'id' ][0] + '.peercommands'$/;"	variable	line:120
+fLock	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^fLock = FileLock( filename )$/;"	variable	line:121
+lines	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^    lines = list()$/;"	variable	line:126
+lines	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^                lines = file.readlines()$/;"	variable	line:130
+cmd	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^        cmd = None$/;"	variable	line:133
+cmd	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^            cmd = json.loads( line )$/;"	variable	line:135
+regIp	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^                regIp = message[ 'ipv4' ]$/;"	variable	line:144
+regPort	/mnt/sdb1/FIT/PDS/PDS/pds18-peer.py	/^                regPort = int( message[ 'port' ] )$/;"	variable	line:145

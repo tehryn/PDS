@@ -83,10 +83,10 @@ possible_arguments = [
         'description'  : 'Parametr prikazu message. Urcuje telo zpravy.'
     },
     {
-        'names'        : [ '--reg-ipv4' ],
+        'names'        : [ '--ipv4' ],
         'optional'     : True,
         'has_tail'     : 1,
-        'word_index'   : 'ip',
+        'word_index'   : 'ipv4',
         'prerequisite' : 'port',
         'description'  : 'Parametr prikazu reconnect a connect. Urcuje ipv4 adresu serveru.'
     },
@@ -95,7 +95,7 @@ possible_arguments = [
         'optional'     : True,
         'has_tail'     : 1,
         'word_index'   : 'port',
-        'prerequisite' : 'ip',
+        'prerequisite' : 'ipv4',
         'description'  : 'Parametr prikazu reconnect a connect. Urcuje port serveru.'
     },
 ]
@@ -116,19 +116,19 @@ if 'node' in settings and 'peer' in settings:
     sys.stderr.write( 'Nelze spustit program se zadanymi parametry --node a --peer, zadejte pouze jeden z nich.\n' )
     exit( invalid_arguments )
 
-filename = '.' + settings['id'][0] + '.commands'
-lock = FileLock( filename )
 if 'peer' in settings:
+    filename = '.' + settings['id'][0] + '.peercommands'
+    lock = FileLock( filename )
     if settings[ 'cmd' ][0] == 'message':
         if 'to' not in settings:
             sys.stderr.write( 'Prikaz message vyzaduje parametry --from, --to a --message\n' )
             exit( invalid_arguments )
         with lock:
             with open( filename, 'a' ) as file:
-                file.write( '{ "type" : "message", "from": "' + dumps( settings['from'][0] ) + '", to: ' + dumps( settings[ 'to' ][0] ) +  ', message: ' + dumps( settings[ 'message' ][0] ) + ' }\n' )
+                file.write( '{ "type" : "message", "from": ' + dumps( settings['from'][0] ) + ', "to": ' + dumps( settings[ 'to' ][0] ) +  ', "message": ' + dumps( settings[ 'message' ][0] ) + ' }\n' )
 
     elif settings[ 'cmd' ][0] == 'reconnect':
-        if 'ip' not in settings:
+        if 'ipv4' not in settings:
             sys.stderr.write( 'Prikaz reconnect vyzaduje parametry --ipv4 --port\n' )
             exit( invalid_arguments )
         elif not( valid_ipv4( settings['ipv4'][0] ) and valid_port( settings[ 'port' ][0] ) ):
@@ -136,19 +136,57 @@ if 'peer' in settings:
             exit( invalid_arguments )
         with lock:
             with open( filename, 'a' ) as file:
-                file.write( '{ "type" : "reconnect", "ipv4": "' + settings['ipv4'][0] + '", port: ' + settings[ 'port' ][0] + ' }\n' )
+                file.write( '{ "type" : "reconnect", "ipv4": "' + settings['ipv4'][0] + '", "port": ' + settings[ 'port' ][0] + ' }\n' )
+
+    elif settings[ 'cmd' ][0] == 'getlist':
+        with lock:
+            with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "getlist" }\n' )
+
+    elif settings[ 'cmd' ][0] == 'peers':
+        with lock:
+            with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "peers" }\n' )
+    else:
+        sys.stderr.write( 'Prikaz ' + settings['cmd'][0] + ' neni na peeru podporovan.\n' )
+        exit( invalid_arguments )
 
 elif 'node' in settings:
+    filename = '.' + settings['id'][0] + '.nodecommands'
+    lock = FileLock( filename )
     if settings[ 'cmd' ][0] == 'connect':
-        if 'ip' not in settings:
-            sys.stderr.write( 'Prikaz connect vyzaduje parametry --ipv4 --port\n' )
+        if 'ipv4' not in settings:
+            sys.stderr.write( 'Prikaz connect vyzaduje parametry --ipv4 a --port\n' )
             exit( invalid_arguments )
-    elif not( valid_ipv4( settings['ipv4'][0] ) and valid_port( settings[ 'port' ][0] ) ):
-        sys.stderr.write( 'Neplatna ip adresa nebo port.\n' )
+        elif not( valid_ipv4( settings['ipv4'][0] ) and valid_port( settings[ 'port' ][0] ) ):
+            sys.stderr.write( 'Neplatna ip adresa nebo port.\n' )
+            exit( invalid_arguments )
+        with lock:
+            with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "connect", "ipv4": "' + settings['ipv4'][0] + '", "port": ' + settings[ 'port' ][0] + ' }\n' )
+    elif settings[ 'cmd' ][0] == 'disconnect':
+        with lock:
+            with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "disconnect" }\n' )
+    elif settings[ 'cmd' ][0] == 'sync':
+        with lock:
+            with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "sync" }\n' )
+    elif settings[ 'cmd' ][0] == 'sync':
+        with lock:
+            with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "sync" }\n' )
+    elif settings[ 'cmd' ][0] == 'database':
+        with lock:
+            with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "database" }\n' )
+    elif settings[ 'cmd' ][0] == 'neighbors':
+        with lock:
+            with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "neighbors" }\n' )
+    else:
+        sys.stderr.write( 'Prikaz ' + settings['cmd'][0] + ' neni na uzlu podporovan.\n' )
         exit( invalid_arguments )
-    with lock:
-        with open( filename, 'a' ) as file:
-            file.write( '{ "type" : "connect", "ipv4": "' + settings['ipv4'][0] + '", port: ' + settings[ 'port' ][0] + ' }\n' )
 else:
     sys.stderr.write( 'Nelze spustit program bez zadanych parametru --node nebo --peer.\n' )
     exit( invalid_arguments )

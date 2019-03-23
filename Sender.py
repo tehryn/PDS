@@ -1,9 +1,8 @@
-import json
 import itertools
 from time import sleep, time
 from sys import stderr
 from threading import Thread, Lock
-from Protokol import Hello, Ack, Disconnect, Error, GetList, List, Message, Protokol, Update, Db
+from Protokol import Hello, Ack, Disconnect, Error, GetList, List, Message, Protokol, Update
 
 
 class Sender( object ):
@@ -27,7 +26,7 @@ class Sender( object ):
                     delete.append( idx )
                 elif item[ 'expires' ] <= currTime:
                     delete.append( idx )
-                    message = 'Did not receive ACK for my >' + item[ 'msgType' ] + '< message.'
+                    message = 'Neobdrzel jsem ACK pro mou ' + item[ 'msgType' ].upper() + ' zpravu.'
                     errorPacket = Error( message )
                     self._send( Protokol.encode( errorPacket ), ( item[ 'addr' ][0], item[ 'addr' ][1] ) )
                     stderr.write( message + '\n' )

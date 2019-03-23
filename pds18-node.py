@@ -7,13 +7,15 @@ Verze: 2.002 (2018-04-10)
 
 import sys
 import socket
+import os
+import json
+from time import sleep
 from threading import Lock
 from Functions import get_setting, print_help
 from ConnectionKeeper import ConnectionKeeper
-from time import sleep
 from Sender import Sender
 from Receiver import Receiver
-from Protokol import Db
+from FileLock import FileLock
 invalid_arguments = 1
 
 author = "Author:\n" + \
@@ -83,9 +85,32 @@ receiver.start( sock )
 keeper = ConnectionKeeper()
 keeper.update( receiver )
 
-dbs = [ db[ 'node' ] for db in receiver._db ]
-newDb = Db( regIp, regPort )
-newDb.update( [ x['peer'] for x in receiver._peers if x[ 'dbId' ] is None ] )
-dbs.append( newDb )
-sender.update( dbs ,'147.229.206.30', 7777 if regPort == 8888 else 8888 )
-sleep(3600)
+filename = '.' + settings[ 'id' ][0] + '.nodecommands'
+fLock = FileLock( filename )
+with fLock:
+    if os.path.isfile( filename ):
+        os.unlink( filename )
+while True:
+    lines = list()
+    with fLock:
+        if os.path.isfile( filename ):
+            with open( filename, 'r' ) as file:
+                lines = file.readlines()
+            os.unlink( filename )
+    for line in lines:
+        cmd = None
+        try:
+            cmd = json.loads( line )
+        except:
+            print( "JSON ERROR - peer" )
+
+        valid, message = receiver.procCommand( cmd, ( regIp, regPort ) )
+        if valid:
+            if isinstance( message, str ):
+                sys.stdout.write( message + '\n' )
+
+        elif message:
+            sys.stderr.write( 'Error: ' + message + '\n' )
+        else:
+            sys.stderr.write( 'Error: Invalid syntax of command.\n' )
+    sleep( 0.5 )
