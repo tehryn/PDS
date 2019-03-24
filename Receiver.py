@@ -134,7 +134,7 @@ class Receiver( object ):
             while self._running:
                 data, addr = sock.recvfrom( 4096 )
                 data = data.decode( 'utf-8' )
-                print( '<<<<<<' + str( addr ) + " " + data )
+                #print( '<<<<<<' + str( addr ) + " " + data )
                 message = None
                 try:
                     message = json.loads( data )

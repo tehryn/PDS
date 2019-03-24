@@ -122,7 +122,7 @@ class Sender( object ):
 
     def _send( self, data, addr ):
         with self._lock:
-            print( '>>>>>>' + str(addr) + ' ' + data )
+            #print( '>>>>>>' + str(addr) + ' ' + data )
             try:
                 #obj = json.loads( data )
                 #self._sock.sendto( b"i" + self._bencode( obj ) + b"e", addr )

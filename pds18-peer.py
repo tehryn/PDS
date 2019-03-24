@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 import sys
 import socket
-import os
-import json
 from threading import Lock
-from time import sleep
 from Functions import get_setting, print_help
 from Sender import Sender
 from ConnectionKeeper import ConnectionKeeper
 from Receiver import Receiver
-from FileLock import FileLock
+from InputReader import InputReader
 
 invalid_arguments = 1
 
@@ -109,8 +106,9 @@ regPort  = int( settings[ 'reg-port' ][0] )
 chatIp   = settings[ 'chat-ip' ][0]
 chatPort = int( settings[ 'chat-port' ][0] )
 
-lock = Lock()
-sender = Sender( sock, lock )
+sendLock = Lock()
+inLonck  = Lock()
+sender = Sender( sock, sendLock )
 receiver = Receiver( chatIp, chatPort, False, sender, settings[ 'username' ][0] )
 receiver.start( sock )
 
@@ -118,36 +116,25 @@ keeper = ConnectionKeeper()
 keeper.hello( sender, settings['username'][0], chatIp, chatPort , regIp, regPort )
 
 filename = '.' + settings[ 'id' ][0] + '.peercommands'
-fLock = FileLock( filename )
-with fLock:
-    if os.path.isfile( filename ):
-        os.unlink( filename )
+reader = InputReader( filename, settings['username'][0] )
 while True:
-    lines = list()
-    with fLock:
-        if os.path.isfile( filename ):
-            with open( filename, 'r' ) as file:
-                lines = file.readlines()
-            os.unlink( filename )
-    for line in lines:
-        cmd = None
-        try:
-            cmd = json.loads( line )
-        except:
-            print( "JSON ERROR - peer" )
-
-        valid, message = receiver.procCommand( cmd, ( regIp, regPort ) )
-        if valid:
-            if isinstance( message, str ):
-                sys.stdout.write( message + '\n' )
-            elif isinstance( message, dict ) and message[ 'type' ] == 'reconnect':
-                regIp = message[ 'ipv4' ]
-                regPort = int( message[ 'port' ] )
-                keeper.stop()
-                keeper.hello( sender, settings['username'][0], chatIp, chatPort , regIp, regPort )
-
-        elif message:
-            sys.stderr.write( 'Error: ' + message + '\n' )
+    reader.wait()
+    for cmd in reader:
+        if cmd[ 'type' ] == 'error' and 'verbose' in cmd:
+            sys.stderr.write( cmd[ 'verbose' ] + '\n' )
+        elif cmd[ 'type' ] == 'print' and 'verbose' in cmd:
+            sys.stdout.write( cmd[ 'verbose' ] + '\n' )
         else:
-            sys.stderr.write( 'Error: Invalid syntax of command.\n' )
-    sleep( 0.5 )
+            valid, message = receiver.procCommand( cmd, ( regIp, regPort ) )
+            if valid:
+                if isinstance( message, str ):
+                    sys.stdout.write( message + '\n' )
+                elif isinstance( message, dict ) and message[ 'type' ] == 'reconnect':
+                    regIp = message[ 'ipv4' ]
+                    regPort = int( message[ 'port' ] )
+                    keeper.stop()
+                    keeper.hello( sender, settings['username'][0], chatIp, chatPort , regIp, regPort )
+            elif message:
+                sys.stderr.write( 'Error: ' + message + '\n' )
+            else:
+                sys.stderr.write( 'Error: Invalid syntax of command.\n' )

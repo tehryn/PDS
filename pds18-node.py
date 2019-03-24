@@ -7,15 +7,12 @@ Verze: 2.002 (2018-04-10)
 
 import sys
 import socket
-import os
-import json
-from time import sleep
 from threading import Lock
 from Functions import get_setting, print_help
 from ConnectionKeeper import ConnectionKeeper
 from Sender import Sender
 from Receiver import Receiver
-from FileLock import FileLock
+from InputReader import InputReader
 invalid_arguments = 1
 
 author = "Author:\n" + \
@@ -84,33 +81,22 @@ receiver = Receiver( regIp, regPort, True, sender )
 receiver.start( sock )
 keeper = ConnectionKeeper()
 keeper.update( receiver )
-
 filename = '.' + settings[ 'id' ][0] + '.nodecommands'
-fLock = FileLock( filename )
-with fLock:
-    if os.path.isfile( filename ):
-        os.unlink( filename )
+reader = InputReader( filename )
 while True:
-    lines = list()
-    with fLock:
-        if os.path.isfile( filename ):
-            with open( filename, 'r' ) as file:
-                lines = file.readlines()
-            os.unlink( filename )
-    for line in lines:
-        cmd = None
-        try:
-            cmd = json.loads( line )
-        except:
-            print( "JSON ERROR - peer" )
-
-        valid, message = receiver.procCommand( cmd, ( regIp, regPort ) )
-        if valid:
-            if isinstance( message, str ):
-                sys.stdout.write( message + '\n' )
-
-        elif message:
-            sys.stderr.write( 'Error: ' + message + '\n' )
+    reader.wait()
+    for cmd in reader:
+        if cmd[ 'type' ] == 'error' and 'verbose' in cmd:
+            sys.stderr.write( cmd[ 'verbose' ] + '\n' )
+        elif cmd[ 'type' ] == 'print' and 'verbose' in cmd:
+            sys.stdout.write( cmd[ 'verbose' ] + '\n' )
         else:
-            sys.stderr.write( 'Error: Invalid syntax of command.\n' )
-    sleep( 0.5 )
+            valid, message = receiver.procCommand( cmd, ( regIp, regPort ) )
+            if valid:
+                if isinstance( message, str ):
+                    sys.stdout.write( message + '\n' )
+
+            elif message:
+                sys.stderr.write( 'Error: ' + message + '\n' )
+            else:
+                sys.stderr.write( 'Error: Invalid syntax of command.\n' )
