@@ -1,0 +1,501 @@
+\documentclass[11pt,a4paper,titlepage]{article}
+\usepackage[left=1.5cm,text={18cm, 25cm},top=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage[czech]{babel}
+\usepackage[latin2]{inputenc}
+\usepackage{float}
+\usepackage{color}
+\usepackage{hyperref}
+\setlength{\parindent}{0cm}
+\setlength{\parskip}{1em}
+\sloppy
+
+\hypersetup{
+	colorlinks=true,
+	linktoc=all,
+	linkcolor=blue,
+	citecolor=red,
+	urlcolor=blue,
+}
+
+\begin{document}
+
+		\setstretch{0.5}
+		\begin{center}
+
+			\includegraphics[width = 150mm]{logo.png}\\
+
+			\vspace{\stretch{0.382}}
+
+			\LARGE
+			Přenos dat, počítačové sítě a protokoly\\
+			Hromadný projekt - Hybridní chatovací P2P síť\\
+			\vspace{\stretch{0.618}}
+
+		\end{center}
+
+	\Large{\today} \hfill Jiří Matějka (xmatej52)
+	\thispagestyle{empty}
+	\newpage
+	\setcounter{page}{1}
+
+    \tableofcontents
+	\newpage
+	\newpage
+
+    \section{Úvod} \label{uvod}
+        Tato práce vznikla jako projekt do předmětu Přenos dat, počítačové sítě a protokoly na škole
+		Vysoké učení technické v~Brně. Práce se zabývá implementace chatovací sítě nad transportním protokolem
+        UDP. Síť se skládá z libovolného počtu peerů a minimálně jednoho registračního uzlu.
+
+	\section{Struktura sítě} \label{struktura sítě}
+		Jak již bylo zmíněno v úvodu\ref{uvod}, celá síť se skládá z několika počtu peerů a
+        a alespoň jednoho registračnního uzlu. K registračním uzlům se připojují jednotliví peeři (uživatelé)
+        a právě od registračního uzlu získává každý uživatel informace o dalších uživatelých v síti.
+
+        Uzel dále může navázat spojení s jiným uzlem a navzájem si tak vyměnit záznamy o
+        registrovaných uživatelích a známých uzlech. Díky spojení mezi jednotlivými uzly
+        může následně registrační uzel poskytnout informace i o uživatelích, které nejsou
+        registrovaní přímo u něj, ale registrovali se k některýmu z jeho sousedů.
+
+
+		\subsection{Peer}
+
+
+		\subsection{Poruchy nastávající během zpracování čokolády}
+			Na všech strojích na lince může dojít k poruchám.
+
+			\subsubsection{Mixér}
+				Na mixéru nastávají hned 2 poruchy.
+				První poruchou je ucpání filtru. To je způsobeno,
+				když je čokoláda nedokonale vyjmuta z obalu a~kousek igelitového
+				obalu je vložen do mixéru spolu s čokoládou. Filtr se časem ucpe,
+				a~musí se vyměnit v~intervalu daném exponenciálním rozložením se
+				středem 43 dnů. Doba opravy trvá 1~--~4 hodiny rovnoměrně.
+
+				Druhá a~závažnější porucha nastává na čepeli mixéru. Tehdy se mixér musí rozebrat,
+				čepel vyměnit a~stroj seřídit. Tato událost nastává s exponenciálním rozložením se
+				středem 365 dnů. Doba opravy čepele a~seřízení stroje zabere 4 -- 7 dní rovnoměrně včetně víkendů.
+
+
+			\subsubsection{Čerpadlo}
+				Na čerpadle dochází pouze k jediné poruše, a~to je způsobeno zatvrdnutím
+				čokolády. Čokoláda tvrdne po 15 minutách, kdy je v~nádobě.
+				V případě poruchy se rozehřeje čerpadlo a~nádoba, a~následně do konce čerpání
+				je ohřev puštěn. Doba než je čerpadlo možné opět spustit trvá 30 -- 40 minut rovnoměrně.
+
+			\subsubsection{Stroj tvořící výrobky}
+				Na tomto stroji dochází k zavzdušnění. Zavzdušnění stroje je dáno
+				exponenciálním rozložením se středem 14 dní. Odvzdušnění je dáno
+				exponenciálním rozložením se středem 15 minut. Tuto opravu zvládne zaměstnanec.
+
+		\subsection{Obsluha zaměstnanci}
+			Mixér, čerpadlo a~stroj na výrobu čokolády obsluhuje dohromady jen jeden
+			zaměstnanec. Ten naplní mixér čokoládou (přibližně 3 -- 5 sekund na kilo) a~spustí ho.
+			Během doby, co je mixér spuštěný, musí u něj zaměstnanec stát. Poté, co je čokoláda
+			dostatečně tekutá, vypne mixér a~začne plnit nádobu. Jakmile čokoláda
+			přeteče do nádoby, zaměstnanec jde spustit čerpadlo a~spolu s ním
+			se spustí i stroj tvořící čokoládové výrobky. Zaměstnanec se posléze
+			přemístí zpět k mixéru a~nádobě na čokoládu. v~nádobě je otvor, na
+			který je napojeno čerpadlo, umístěn v~levé části, a~tam zaměstnanec
+			hrne veškerou čokoládu. Poté co odčerpá poslední zbytky čokolády,
+			vypíná se stroj na tvorbu výrobků, a~jde se opět plnit mixér.
+
+			Detekce	zmetků je prováděna v~jiné části výroby. Toto je v~modelu
+			zjednodušeno a~počítá se pouze s časovou prodlevou, než se vadné
+			kusy vrátí zpět na začátek procesu. Model to vůbec neovlivní,
+			protože při plnění mixéru je úplně jedno, zda vložený kus čokolády je
+			zmetek nebo ještě nezpracovaný kus.
+
+		\subsection{Upřesnění získaných dat} \label{upresneni_dat}
+			Pro správné fungování simulačního modelu \cite[strany 44 a 49]{web:prednasky}
+			bylo nutné upřesnit zadaná data. Z
+			dalších konzultací s Pavlem Dubou jsme dospěli k výsledkům uvedených
+			v tabulce \ref{table:data}. Přestože údaje jsou již přesnější, model
+			systému bude třeba ještě validovat a~verifikovat \cite[strany 36 a 37]{web:prednasky}.
+
+			\begin{table}[htb]
+				\centering
+			    \begin{tabular}{|l|l|l|}
+				\hline
+				    Údaj                            & Původní hodnota                      & Upravená hodnota            \\ \hline
+					Doba vložení 1 kila do mixéru   & pár vteřin                           & 3 -- 5 sekund rovnoměrně    \\
+				    Doba obsluhy mixéru             & 15 minut                             & 14 -- 17 minut rovnoměrně   \\
+				    Doba čerpání 1 kila             & 12 sekund                            & 12 sekund                   \\
+				    Doba zpracování 1 kila          & 18 sekund                            & 18 sekund                   \\ \hline
+				    Porucha čepele na mixéru        & 1 krát do roka                       & (exp) 365 dnů               \\
+				    Zanesení filtru na mixéru       & 1 krát max 2 krát za 2 měsíce        & (exp) 43 dnů                \\
+				    Zatvrdnutí čokolády             & 15 minut 	                           & 15 minut                    \\
+				    Zavzdušnění stroje              & 1 krát za 14 dní                     & (exp) 14 dní                \\ \hline
+				    Doba opravy čepele mixéru       & Do týdne to je opravené              & 4 -- 7 dní rovnoměrně       \\
+				    Výměna/vyčištění filtru         & 1 -- 4 hodiny, záleží na technikovi  & 1 -- 4 hodiny rovnoměně     \\
+				    Oprava čerpadla                 & 30 -- 40 minut                       & 30 -- 40 minut rovnoměrně   \\
+				    Odvzdušnění stroje              & kolem 15 minut                       & (exp) 15 minut              \\ \hline
+			    \end{tabular}
+				\caption{Tabulka zobrazující data získaná z průzkumu a~jejich upravené hodnoty na základě experimentu}
+				\label{table:data}
+			\end{table}
+
+	\section{Rozbor tématu a použitých metod a technologií}
+		Pro tvorbu simulačního modelu procesu zpracování čokolády je nezbytné
+		znát, jak takový proces probíhá. Samotný proces je podrobně popsán v~kapitole
+		\ref{zapracovani_cokolady}.
+
+		\subsection{Popis použitých postupů}
+			Pro tvorbu simulačního projektu byl použit jazyk C\texttt{++} s knihovnou
+			SIMLIB \cite{web:Simlib}. C\texttt{++} je objektově orientovaný jazyk, a~spolu s knihovnou
+			SIMLIB je ideálním nástrojem pro simulaci tohoto modelu.
+
+		\subsection{Původ použitých metod a technologií}
+			Autorem knihovny SIMLIB je Dr. Ing. Petr Peringer a~spoluautory Ing. David Leška a Ing. David Martinek. Použité konstrukce
+			jsou převzaty z příkladů konstrukcí \cite{web:simlib_examples}.
+
+	\section{Koncepce modelu}
+		Cílem projektu je simulovat proces zpracování čokolády na lince a~ověřit
+		efektivnost výroby, popřípadě navrhnout efektivnější systém. Simulace
+		se nezaměřuje na celý proces zpracování, ale pouze na část, kde se čokoláda
+		připravuje na další zpracování, tato část je společná pro výrobu většiny
+		produktů firmy LION PRODUCTS, s.r.o. v~tomto modelu budeme pracovat s
+		čokoládou typu Callebaut, pro kterou odpovídají hodnoty uvedené v
+		tabulce \ref{table:data}, u ostatních druhů čokolády by se data mírně lišila.
+
+		Nejprve jsme si vytvořili abstraktní model, reprezentovaný stochastickou Petriho sítí
+		\cite[strany 123 -- 135]{web:prednasky},
+		na základě informací zjištěných v~kapitole \ref{zapracovani_cokolady}.
+		Tuto síť můžete vidět na obrázku \ref{fig:sit-komplet}.
+
+		Kvůli její komlikovanosti jsme se ji však následně rozhodli rozdělit do několika obrázků,
+		které by lépe vysvětlovaly jednotlivé situace, jako například poruchy na jednotlivých strojích.
+
+		Obrázek \ref{fig:sit-pracovni_doba} reprezentuje pracovní dobu zaměstnance na lince.
+		Poté, co zaměstnanec příjde do práce, se spustí 15 hodinový odpočet.
+		Po jeho uplynutí zaměstnanec dokončí pracovní cyklus a~znovu již nenaplňuje mixér.
+		Po 5 pracovních dnech následují 2 dny volna.
+
+		Obrázek \ref{fig:sit-mixer} reprezentuje obě zminované poruchy mixéru z kapitoly \ref{zapracovani_cokolady}.
+		Porucha je dána odpočtem, po jehož uplynutí dojde k narušení běžného chodu.
+		Porucha čepele zablokuje mixér ihned a~stroj je nutné opravit. Veškerá čokoláda z mixéru je přesunuta do nádoby na zmetky.
+		Porucha filtru nezastavuje běh mixéru, ale je opravována, jakmile zaměstnanec přemístí rozmixovanou čokoládu z mixéru do nádoby.
+
+		Obrázek \ref{fig:sit-zavzdusneni} reprezentuje problém vznikající zavzdušněním stroje zpracovávajícího čokoládu.
+		Jakmile zaměstnanec zjistí, že stroj je zavzdušněn, vyčká než dokončí stroj svoji činnost, a~následně ho odvzdušní.
+
+		Obrázek \ref{fig:sit-tvrdnuti} reprezentuje tvrdnutí čokolády v~nádobě.
+		Čokoláda po 15 minutách v~nádobě vychladne a~není možné ji čerpat.
+		Po vychladnutí čokolády se musí zahřát nádoba s čokoládou, aby bylo čerpadlo schopné čokoládu znovu čerpat.
+		To trvá 30 -- 40 minut rovnoměrně.
+
+		Obrázek \ref{fig:sit-hlavni} reprezentuje výrobu čokolády bez jakýchkoliv poruch.
+		Zaměstnanec naplní mixér, spustí mixování trvající 14 -- 17 minut.
+		Rozmixovanou čokoládu přemístí do nádoby a~s tou se následně přemístí k čerpadlu.
+		Čerpadlo a~stroj spustí, začne čokoládu míchat a~sunout k vývodu do čerpadla.
+		Stroj mezitím vytváří čokoládové výrobky, které jsou následně kontrolovány, zda jsou kvalitní.
+		Pokud se narazí na zmetky, jsou přemístěny do nádoby, která koresponduje s nádobou na zmetky,
+		odkud nabírá čokoládu zaměstnanec.
+
+		\begin{figure}
+		\begin{center}
+			\includegraphics[scale=0.3]{../navrh/detaily/pracovni_doba.png}
+			\caption{Pracovní doba}
+			\label{fig:sit-pracovni_doba}
+		\end{center}
+		\end{figure}
+
+		\begin{figure}
+		\begin{center}
+			\includegraphics[scale=0.3]{../navrh/detaily/poruchy_mixeru.png}
+			\caption{Poruchy mixéru}
+			\label{fig:sit-mixer}
+		\end{center}
+		\end{figure}
+
+		\begin{figure}
+		\begin{center}
+			\includegraphics[scale=0.3]{../navrh/detaily/zavzdusneni.png}
+			\caption{Zavzdušnění stroje}
+			\label{fig:sit-zavzdusneni}
+		\end{center}
+		\end{figure}
+
+		\begin{figure}
+		\begin{center}
+			\includegraphics[scale=0.3]{../navrh/detaily/tvrdnuti.png}
+			\caption{Tvrdnutí čokolády}
+			\label{fig:sit-tvrdnuti}
+		\end{center}
+		\end{figure}
+
+		\begin{figure}
+			\begin{center}
+				\includegraphics[scale=0.33]{../navrh/detaily/hlavni_cast.png}
+				\caption{Hlavní část}
+				\label{fig:sit-hlavni}
+			\end{center}
+		\end{figure}
+
+		\begin{figure}
+		\begin{center}
+			\includegraphics[scale=0.25]{../navrh/navrh-petriho_sit-cerna.png}
+			\caption{Kompletní síť}
+			\label{fig:sit-komplet}
+		\end{center}
+		\end{figure}
+
+	\newpage
+	\section{Architektura simulačního modelu}
+		V implementaci je Zaměstnanec reprezentován třídou Zamestnanec, čokoláda, která
+		již opustila čerpadlo je reprezentována třídou Cokolada. Stroje na lince (mixér, čerpadlo a~stroj na zpracování čokolády)
+		jsou reprezentovány pomocí třídy Facility \cite[strana 180]{web:prednasky}.
+		Porucha zanesení filtru je implementována pomocí třídy Ucpani\_filtru, porucha na
+		čepeli mixéru pomocí třídy Porucha\_cepele, zavzdušnění stroje pomocí třídy
+		Zavzdusneni a~tvrdnutí čokolády pomocí třídy Tvrdnuti\_cokolady.
+
+		Třídy Zamestnanec, Cokolada, Porucha\_cepele a~Ucpani\_filtru jsou potomky třídy Process \cite[strana 171]{web:prednasky}
+		a předkem tříd Tvrdnuti\_cokolady a~Zavzdusneni je třída Event \cite[strana 169]{web:prednasky}
+
+	\section{Podstata simulačních experimentů a jejich průběh}
+		Pomocí simulačních experimentů \cite[strana 9]{web:prednasky} chceme zjistit, jaké je ideální množství
+		čokolády vkládané do mixéru a~zjištění, jak moc velký dopad mají poruchy na produkci
+		čokolády.
+
+		\subsection{Simulace provozu linky}
+			Tento experiment \cite[strana 9]{web:prednasky} má za cíl prokázat validitu simulačního modelu. Tento experiment
+			proběhl několikrát a~vedl k upřesnění získaných dat. Na tento experiment jsme se
+			odkazovali v~kapitole \ref{zapracovani_cokolady}, a~výsledkem tohoto experimentu
+			je tabulka \ref{table:data} s upřesněnými statistickými údaji a~graf \ref{fig:graf_ctvrtleti}
+			znázorňující výrobu čokolády a~společný vliv poruch na produktivitu linky.
+
+			\begin{figure}[H]
+			\begin{center}
+				\includegraphics[scale=0.65]{../statistika/graf_ctvrtleti_50.png}
+				\caption{ Výroba čokoládových výrobků za dobu 10 let }
+				\label{fig:graf_ctvrtleti}
+			\end{center}
+			\end{figure}
+
+		\subsection{Zjištění ideálního množství čokolády vkládané do mixéru}
+			Z grafu \ref{fig:graf_ctvrtleti} lze mimo jiné vyčíst, že při aktuálním
+			provozu linky nedochází k tvrdnutí čokolády. Pomocí tohoto experimentu
+			chceme zjistit, v~jakém množství vkládané čokolády do mixéru začne
+			docházet k tvrdnutí čokolády a~v jakém množství je produkce nejvyšší.
+
+			Výsledkem této práce je graf \ref{fig:graf_tvrdnuti}, ze kterého lze zjistit,
+			že linka má nejlepší výsledky při vkládní 75 kilogramů čokolády do mixéru.
+			Z tabulky \ref{table:experiment_1} lze zase zjistit, že
+			při tomto množství je linka schopna vyrobit až o 22.2 \% více výrobků.
+
+			\begin{table}[htb]
+				\centering
+				\begin{tabular}{|l|l|l|l|l|l|l|}
+				\hline
+				Množství čokolády [kg]  & Zatvrdnutí čokolády & Vyrobeno čokolady [t] \\ \hline
+				50                 & 0                   & 3677.936 \\
+				55                 & 0                   & 3802.846 \\
+				60                 & 0                   & 4008.138 \\
+				65                 & 0                   & 4217.805 \\
+				70                 & 0                   & 4342.173 \\
+				74                 & 0                   & 4406.111 \\
+				75                 & 0                   & 4495.423 \\
+				76                 & 2558                & 4408.304 \\
+				77                 & 4773                & 4186.009 \\
+				78                 & 6971                & 4064.702 \\
+				79                 & 8893                & 3967.276 \\
+				80                 & 10823               & 3906.272 \\
+				85                 & 18271               & 3517.709 \\
+				90                 & 23745               & 3185.453 \\
+				95                 & 27931               & 2984.075 \\
+				100                & 30941               & 2785.517 \\ \hline
+				\end{tabular}
+				\caption{ Data získaná ze simulace }
+				\label{table:experiment_1}
+			\end{table}
+
+			\begin{figure}[H]
+			\begin{center}
+				\includegraphics[scale=0.65]{../statistika/graf_vztah_vstupu_a_tvrdnuti.png}
+				\caption{ Vztah vkládaného množství čokolády do mixéru a~výsledného množství výrobků }
+				\label{fig:graf_tvrdnuti}
+			\end{center}
+			\end{figure}
+
+		\subsection{Vliv jednotlivých poruch na krátkodobou produkci čokolády}
+			Výsledek toho experimentu lze použít pro zjištění dopadu jednotlivých poruch
+			na produkci a~lze jeho výsledky použít například k analýze, zda se nevyplatí
+			některý stroj nahradit za jiný.
+
+			\subsection{Vliv zavzdušnění stroje}
+				Stroj na zpracování čokolády má nejvíce poruch ze všech ostatních strojů na lince.
+				Pokud výrazně ovlivňuje produkci čokolády, bylo by vhodné hledat jiné řešení,
+				jak zpracovávat čokoládu.
+
+				Z výsledného grafu \ref{fig:graf_stroj} a~tabulky \ref{table:experiment_stroj} lze
+				zjistit, že stroj má minimální dopad na produkci. Produkce byla následující
+				hodinu sice poloviční, ale na výslednou hodnotu produkce celého dne to má malý
+				dopad a~vzhledem k tomu, že porucha nastává v~průměru jednou za 14 dní,
+				dopad na produkčnost linky je vskutku minimální.
+				\begin{figure}[H]
+				\begin{center}
+					\includegraphics[scale=0.65]{../statistika/graf_vliv_stroje.png}
+					\caption{ Průběh výroby a~nastávání poruchy stroje během jednoho dne výroby }
+					\label{fig:graf_stroj}
+				\end{center}
+				\end{figure}
+
+
+				\begin{table}[H]
+				    \centering
+				    \begin{tabular}{|l|l|l|l|l|l|l|}
+				    	\hline
+					    Čas [h] &  Poruch stroje &  Čokoládových výrobků [t] \\ \hline
+					    1 &  0 &  0.078 \\
+					    2 &  0 &  0.1 \\
+					    3 &  0 &  0.089 \\
+					    4 &  0 &  0.093 \\
+					    5 &  0 &  0.088 \\
+					    6 &  1 &  0.091 \\
+					    7 &  0 &  0.045 \\
+					    8 &  0 &  0.089 \\
+					    9 &  0 &  0.106 \\
+					    10 &  0 &  0.095 \\
+					    11 &  0 &  0.096 \\
+					    12 &  0 &  0.093 \\
+					    13 &  0 &  0.098 \\
+					    14 &  0 &  0.09 \\
+					    15 &  0 &  0.091 \\
+					    16 &  0 &  0.043 \\
+					    17 &  0 &  0 \\
+					    18 &  0 &  0 \\
+					    19 &  0 &  0 \\
+					    20 &  0 &  0 \\
+					    21 &  0 &  0 \\
+					    22 &  0 &  0 \\
+					    23 &  0 &  0 \\
+					    24 &  0 &  0 \\ \hline
+				    \end{tabular}
+				    \caption{Vliv poruchy stroje na počet výrobků}
+				    \label{table:experiment_stroj}
+				\end{table}
+
+			\subsection{Vliv zanesení filtru}
+				Filtr se sice nezanáší tak často, ale jeho oprava může trvat přibližně 4 krát -- 16 krát
+				déle. Výsledky této simulace jsou zobrazeny v~grafu \ref{fig:graf_filtr} a
+				tabulce \ref{table:experiment_filtr}
+
+				Přestože oprava filtru netrvala ani 2 hodiny, i tak dokázala snížit produkci čokolády
+				v~následujících dvou hodinách o něco více než 50 \%. Ale vzhledem k tomu, že
+				porucha nastává přibližně jednou za 43 dní, je to opět zanedbatelné.
+
+				\begin{figure}[H]
+				\begin{center}
+					\includegraphics[scale=0.65]{../statistika/graf_vliv_filtru.png}
+					\caption{ Průběh výroby a~nastání poruchy filtru během jednoho dne výroby }
+					\label{fig:graf_filtr}
+				\end{center}
+				\end{figure}
+
+				\begin{table}[H]
+				    \centering
+				    \begin{tabular}{|l|l|l|}
+					    \hline
+					    Čas [h] &  Poruch filtru &  Čokoládových výrobků [t] \\ \hline
+					    1 &  0 &  0.078 \\
+					    2 &  0 &  0.1 \\
+					    3 &  0 &  0.089 \\
+					    4 &  1 &  0.093 \\
+					    5 &  0 &  0.045 \\
+					    6 &  0 &  0.038 \\
+					    7 &  0 &  0.096 \\
+					    8 &  0 &  0.087 \\
+					    9 &  0 &  0.092 \\
+					    10 &  0 &  0.093 \\
+					    11 &  0 &  0.088 \\
+					    12 &  0 &  0.093 \\
+					    13 &  0 &  0.09 \\
+					    14 &  0 &  0.095 \\
+					    15 &  0 &  0.095 \\
+					    16 &  0 &  0.029 \\
+					    17 &  0 &  0 \\
+					    18 &  0 &  0 \\
+					    19 &  0 &  0 \\
+					    20 &  0 &  0 \\
+					    21 &  0 &  0 \\
+					    22 &  0 &  0 \\
+					    23 &  0 &  0 \\
+					    24 &  0 &  0 \\ \hline
+				\end{tabular}
+				\caption{Vliv poruchy filtru na počet výrobků}
+				\label{table:experiment_filtr}
+			\end{table}
+		\subsection{Vliv poruch čepele}
+			Porucha čepele má bezesporu největší vliv na produkci čokolády, otázkou
+			je, zda ten dopad je tak významný, aby to mělo smysl řešit, a~zda je tento
+			problém vůbec řešitelný.
+
+			Graf \ref{fig:graf_cepel} znázorňuje průběh výroby a~z tabulky \ref{table:experiment_cepel}
+			lze vyčíst, že porucha ovlivnila výrobu čokolády celkem v~6~dnech (z toho 2 byly víkendové dny).
+			V prvním dnu snížila produkci o necelou třetinu, v~následujících 4 dnech byla produkce nulová
+			a~6. den byla produkce minimální. Vliv poruchy čepele na produkci je dokonce viděl
+			i~v~dlouhodobé produkci znázorněné na grafu \ref{fig:graf_ctvrtleti}.
+
+			\begin{figure}[H]
+			\begin{center}
+				\includegraphics[scale=0.65]{../statistika/graf_vliv_filtru.png}
+				\caption{ Průběh výroby a~nastání poruchy čepele během jednoho měsíce výroby }
+				\label{fig:graf_cepel}
+			\end{center}
+			\end{figure}
+
+			\begin{table}[htb]
+			    \centering
+			    \begin{tabular}{|l|l|l|}
+			    \hline
+			    Čas [den] & Poruch čepele &  Čokoládových výrobků [t] \\ \hline
+			    1  & 0 & 1.434 \\
+			    2  & 0 & 1.442 \\
+			    3  & 0 &  1.46 \\
+			    4  & 0 &  1.44 \\
+			    5  & 0 &  1.427 \\
+			    6  & 0 &  0 \\
+			    7  & 0 &  0 \\
+			    8  & 0 &  1.433 \\
+			    9  & 0 &  1.447 \\
+			    10 & 1 &  1.09 \\
+			    11 & 0 &  0 \\
+			    12 & 0 &  0 \\
+			    13 & 0 &  0 \\
+			    14 & 0 &  0 \\
+			    15 & 0 &  0.174 \\
+			    16 & 0 &  1.379 \\
+			    17 & 0 &  1.464 \\
+			    18 & 0 &  1.449 \\
+			    19 & 0 &  1.412 \\
+			    20 & 0 &  0 \\
+			    21 & 0 &  0 \\
+			    22 & 0 &  1.45 \\
+			    23 & 0 &  1.434 \\
+			    24 & 0 &  1.447 \\
+			    25 & 0 &  1.406 \\
+			    26 & 0 &  1.442 \\
+			    27 & 0 &  0 \\
+			    28 & 0 &  0 \\
+			    29 & 0 &  1.443 \\
+			    30 & 0 &  1.447 \\ \hline
+			    \end{tabular}
+			    \caption{Vliv poruchy čepele na počet výrobků}
+			    \label{table:experiment_cepel}
+			\end{table}
+	\section{Závěr}
+		Podle provedených experimentůch lze zvýšit produktivitu linky, a~to až o 22 \%.
+		Toho lze docílit zvýšením množství čokolády vkládané do mixéru o 25 kilogramů (na 75 kg).
+		Protože některé ze statistických údajů nebyly natolik přesné, a~protože simulační model
+		nikdy nemůže být naprosto shodný s realitou, tak se mohou výsledky těchto experimentů
+		provedených v~realitě trochu lišit. I přes tento fakt jsme došli k~závěru, že
+		by bylo pro firmu LION PRODUCTS vhodné alespoň zkusit navýšit toto množství. Co se
+		poruch týče, tak jediná porucha, která stojí za pozornost, je porucha čepele. U této
+		poruchy se nám nepodařilo zjistit data, jak změnit poruchovost stroje a~otázka,
+		jak řešit tento problém, je tedy nezodpovězena.
+	\newpage
+	\bibliography{zdroje}
+
+\end{document}
