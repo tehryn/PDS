@@ -1,4 +1,5 @@
 import itertools
+import json
 from time import sleep, time
 from sys import stderr
 from threading import Thread, Lock
@@ -64,6 +65,13 @@ class Sender( object ):
             with self._ackLock:
                 self._receivedAck[ idx ][ 'received' ] = True
 
+    def hasAck( self, msgType, addr ):
+        with self._ackLock:
+            for ack in self._receivedAck:
+                if ack[ 'msgType' ] == msgType and addr == ack[ 'addr' ] and ack[ 'received' ]:
+                    return True
+        return False
+
     def hello( self, username, ipv4, port, destIp, destPort, goodbye = False ):
         packet = Hello( username, ipv4, str( port ) )
         if ( not goodbye ):
@@ -107,25 +115,100 @@ class Sender( object ):
         self._send( Protokol.encode( packet ), (destIp, destPort) )
         return False
 
-    def _bencode( self, obj ):
-        if isinstance( obj, int ):
-            return b"i" + str( obj ).encode( 'utf-8' ) + b"e"
-        elif isinstance(obj, str):
-            return self._bencode( obj.encode( "utf-8" ) )
-        elif isinstance( obj, bytes ):
-            return str( len( obj ) ).encode() + b":" + obj
-        else:
-            items = list( obj.items() )
-            items.sort()
-            data = b"d" + b"".join( map( self._bencode, itertools.chain(*items) ) ) + b"e"
-        return data
-
     def _send( self, data, addr ):
         with self._lock:
-            #print( '>>>>>>' + str(addr) + ' ' + data )
+            print( '>>>>>>' + str(addr) + ' ' + data )
             try:
-                #obj = json.loads( data )
-                #self._sock.sendto( b"i" + self._bencode( obj ) + b"e", addr )
-                self._sock.sendto( data.encode( 'utf-8' ), addr )
+                obj = json.loads( data )
+                #print( self._bencode( obj ) )
+                self._sock.sendto( Sender._bencode( obj ), addr )
+                #self._sock.sendto( data.encode( 'utf-8' ), addr )
             except:
                 stderr.write( 'Unable to send message to ' + addr[0] + ': ' + str( addr[1] ) + '\n' )
+
+    @staticmethod
+    def _bencode( obj ):
+        items = list( obj.items() )
+        items.sort()
+        result = b'd'
+        for key, value in items:
+            if isinstance( value, int ):
+                value = b'i' + str( value ).encode( 'utf-8' ) + b'e'
+            elif isinstance( value, dict ):
+                value = Sender._bencode( value )
+            else:
+                value = value.encode( 'utf8' )
+                value = str( len( value ) ).encode( 'utf-8' ) + b':' + value
+            key = key.encode( 'utf-8' )
+            key = str( len( key ) ).encode( 'utf-8' ) + b':' + key
+            result += key + value
+        return result + b'e'
+
+    @staticmethod
+    def decode( data ):
+        obj, empty = Sender._decoder( data )
+        if obj is None or empty:
+            return None
+        return obj
+
+    @staticmethod
+    def _decoder( data ):
+        if isinstance( data, str ):
+            data = data.encode( 'utf-8' )
+
+        error = ( None, None )
+        if not data or chr( data[0] ) != 'd' or chr( data[-1] ) != 'e':
+            return error
+
+        obj = dict()
+        key = None
+        data = data[1:]
+
+        while chr( data[0] ) != 'e':
+            if chr( data[ 0 ] ).isdigit():
+                num = chr( data[0] )
+                idx = 1
+                while idx < len( data ) and chr( data[idx] ).isdigit():
+                    num += chr( data[idx] )
+                    idx += 1
+
+                if idx == len( data ) or chr( data[ idx ] ) != ':':
+                    return error
+
+                data = data[idx:]
+                num = int( num ) + 1
+
+                if num == 0 or len( data ) < num:
+                    return error
+
+                if key is None:
+                    key = data[1:num].decode( 'utf8' )
+                else:
+                    #obj[ key ] = json.loads( data[1:num].decode( 'utf8' ) )
+                    obj[ key ] = data[1:num].decode( 'utf8' )
+                    key = None
+                data = data[num:]
+            elif key is None:
+                return error
+            elif chr( data[0] ) == 'i':
+                num = str()
+                idx = 1
+                while idx < len( data ) and chr( data[idx] ).isdigit():
+                    num += chr( data[idx] )
+                    idx += 1
+                if idx == len( data ) or chr( data[ idx ] ) != 'e':
+                    return error
+                obj[ key ] = int( num )
+                data = data[idx+1:]
+                key = None
+            elif chr( data[0] ) == 'd':
+                value, data = Sender._decoder( data )
+
+                if value is None:
+                    return error
+
+                obj[ key ] = value
+                key = None
+            else:
+                return error
+        return obj, data[1:]

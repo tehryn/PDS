@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Tento skript slouzi ke kolekci odkazu.
+Implementace registracniho uzlu
 Autor: Jiri Matejka
-Verze: 2.002 (2018-04-10)
 """
-
 import sys
 import socket
+import signal
 from threading import Lock
 from Functions import get_setting, print_help
 from ConnectionKeeper import ConnectionKeeper
 from Sender import Sender
 from Receiver import Receiver
 from InputReader import InputReader
+
 invalid_arguments = 1
 
 author = "Author:\n" + \
@@ -60,6 +60,7 @@ possible_arguments = [
     },
 ]
 
+# zpracovani argumentu
 settings = dict()
 try:
     settings = get_setting( possible_arguments, sys.argv[1:] )
@@ -71,18 +72,32 @@ except Exception as e:
         sys.stderr.write( str( e ) + '\n' )
         exit( invalid_arguments )
 
-sock    = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
 regIp   = settings[ 'reg-ip' ][0]
 regPort = int( settings[ 'reg-port' ][0] )
 
-lock = Lock()
-sender = Sender( sock, lock )
+# Prijem a odesilani zprav
+sock     = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
+lock     = Lock()
+sender   = Sender( sock, lock )
 receiver = Receiver( regIp, regPort, True, sender )
 receiver.start( sock )
+
+# Pravidelne odesilani update
 keeper = ConnectionKeeper()
 keeper.update( receiver )
+
+# Zpracovani prikazu od uzivatele a rpc
 filename = '.' + settings[ 'id' ][0] + '.nodecommands'
-reader = InputReader( filename )
+reader   = InputReader( filename )
+
+def thisIsTheEnd( _, __ ):
+    keeper.stop()
+    reader.stop()
+    exit( 0 )
+
+signal.signal( signal.SIGINT, thisIsTheEnd)
+signal.signal( signal.SIGTERM, thisIsTheEnd)
+
 while True:
     reader.wait()
     for cmd in reader:
@@ -90,6 +105,9 @@ while True:
             sys.stderr.write( cmd[ 'verbose' ] + '\n' )
         elif cmd[ 'type' ] == 'print' and 'verbose' in cmd:
             sys.stdout.write( cmd[ 'verbose' ] + '\n' )
+        elif cmd[ 'type' ] == 'exit':
+            keeper.stop()
+            exit( 0 )
         else:
             valid, message = receiver.procCommand( cmd, ( regIp, regPort ) )
             if valid:

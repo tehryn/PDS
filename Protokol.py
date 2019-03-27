@@ -1,3 +1,4 @@
+import itertools
 from threading import Lock
 from json import dumps
 

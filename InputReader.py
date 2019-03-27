@@ -1,8 +1,10 @@
 import os
 import json
 import sys
+import select
 from time import sleep
 from threading import Thread, Lock, Condition
+#from multiprocessing import Process, Lock, Condition
 from FileLock import FileLock
 from Functions import find_nth, valid_ipv4, valid_port
 
@@ -11,6 +13,8 @@ class InputReader( object ):
         self._lock = Lock()
         self._commands = list()
         self._fileReader = Thread( target = self._file, args=[ filename ] )
+        self._cond = Condition()
+        self._running = True
         if username is None:
             self._stdinReader = Thread( target = self._stdinNode )
         else:
@@ -19,14 +23,15 @@ class InputReader( object ):
         self._fileReader.setDaemon( True )
         self._stdinReader.start()
         self._fileReader.start()
-        self._cond = Condition()
 
     def _file( self, filename ):
+        #signal.signal( signal.SIGINT, self._kill)
+        #signal.signal( signal.SIGTERM, self._kill)
         fLock = FileLock( filename )
         with fLock:
             if os.path.isfile( filename ):
                 os.unlink( filename )
-        while True:
+        while self._running:
             lines = list()
             with fLock:
                 if os.path.isfile( filename ):
@@ -46,8 +51,15 @@ class InputReader( object ):
             sleep( 0.5 )
 
     def _stdinPeer( self, username ):
-        while True:
-            line = sys.stdin.readline().strip()
+        #signal.signal( signal.SIGINT, self._kill)
+        #signal.signal( signal.SIGTERM, self._kill)
+        #sys.stdin = open(0)
+        while self._running:
+            line = None
+            if select.select( [ sys.stdin ], [], [], 0.5 )[0]:
+                line = sys.stdin.readline().strip()
+            else:
+                continue
             if line.startswith( '\\' ):
                 if line.startswith( '\\w' ): # message \ w _ c _
                     idx1 = find_nth( line, ' ', 1 )
@@ -75,11 +87,21 @@ class InputReader( object ):
                 elif line ==  '\\u': # getlist
                     self._append( { 'type' : 'getlist' } )
                 elif line.startswith( '\\h' ): # help
-                    self._append( { 'type' : 'print', 'verbose' : '[\\l] Vypise seznam znamych uzivatelu\n[\\u] Aktualizuje seznam uzivatelu\n[\\r ipv4 port] pripoji se na zadany uzel\n[\\w username message] odesle zpravu uzivateli' } )
+                    self._append( { 'type' : 'print', 'verbose' : '[\\l] Vypise seznam znamych uzivatelu\n[\\u] Aktualizuje seznam uzivatelu\n[\\r ipv4 port] pripoji se na zadany uzel\n[\\w username message] odesle zpravu uzivateli [\\exit] Ukonci aplikaci' } )
+                elif line == '\\exit':
+                    self._append( { 'type' : 'exit' } )
+                    break
 
     def _stdinNode( self ):
-        while True:
-            line = sys.stdin.readline().strip()
+        #signal.signal( signal.SIGINT, self._kill)
+        #signal.signal( signal.SIGTERM, self._kill)
+        #sys.stdin = open(0)
+        while self._running:
+            line = None
+            if select.select( [ sys.stdin ], [], [], 0.5 )[0]:
+                line = sys.stdin.readline().strip()
+            else:
+                continue
             if line.startswith( '\\' ):
                 if line.startswith( '\\c' ): # connect
                     idx1 = find_nth( line, ' ', 1 )
@@ -95,14 +117,17 @@ class InputReader( object ):
                             self._append( { 'type' : 'connect', 'ipv4' : ipv4, 'port' : int( port ) } )
                 elif line == '\\s': # sync
                     self._append( { 'type' : 'sync' } )
-                elif line.startswith( '\\l' ): # database
+                elif line == '\\l': # database
                     self._append( { 'type' : 'database' } )
-                elif line.startswith( '\\n' ): # neighbors
+                elif line == '\\n': # neighbors
                     self._append( { 'type' : 'neighbors' } )
-                elif line.startswith( '\\h' ): # help
-                    self._append( { 'type' : 'print', 'verbose' : '[\\c ipv4 port] Navaze spojeni se zadanym uzlem\n[\\s] Vynuti synchronizaci s ostatnimy uzly\n[\\l] Vypise aktualni databazi peeru a jejich uzlu\n[\\n] Vypise databazi znamych uzlu\n[\\d] Odpodi se od ostatnich uzlu' } )
-                elif line.startswith( '\\d' ): # disconnect
+                elif line == '\\h': # help
+                    self._append( { 'type' : 'print', 'verbose' : '[\\c ipv4 port] Navaze spojeni se zadanym uzlem\n[\\s] Vynuti synchronizaci s ostatnimy uzly\n[\\l] Vypise aktualni databazi peeru a jejich uzlu\n[\\n] Vypise databazi znamych uzlu\n[\\d] Odpodi se od ostatnich uzlu [\\exit] Ukonci aplikace' } )
+                elif line == '\\d': # disconnect
                     self._append( { 'type' : 'disconnect' } )
+                elif line == '\\exit':
+                    self._append( { 'type' : 'exit' } )
+                    break
 
     def __iter__( self ):
         with self._lock:
@@ -114,6 +139,14 @@ class InputReader( object ):
             self._commands.append( cmd )
             with self._cond:
                 self._cond.notify()
+
+    def stop( self ):
+        self._running = False
+        sys.stdin.close()
+        self._stdinReader.join()
+        self._fileReader.join()
+        #sleep( 0.25 )
+        #sys.stdin.write( "\\exit\n" )
 
     def wait( self ):
         with self._cond:

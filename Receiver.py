@@ -4,11 +4,11 @@ from threading import Thread, Lock
 from time import sleep, time
 from Protokol import Protokol, Peer, Db
 from Functions import valid_ipv4, valid_port
+from Sender import Sender
 
 class Receiver( object ):
     def __init__( self, ip, port, isNode, sender, username = None ):
         self._isNode = isNode
-        self._running = False
         self._thread = None
         self._peers = list()
         self._db = list()
@@ -126,25 +126,23 @@ class Receiver( object ):
                 return True, 'V databazi se nenachazi jediny uzivatel, pro synchronizaci databaze pouzijte prikaz getlist.'
             if cmd[ 'type' ] == 'reconnect':
                 return True, cmd
+        return None, None
 
     def start( self, sock ):
         def _listener():
-            self._running = True
-            sock.bind( ( self._ip, self._port ) )
-            while self._running:
+            # napojeni na port
+            while True:
                 data, addr = sock.recvfrom( 4096 )
-                data = data.decode( 'utf-8' )
-                #print( '<<<<<<' + str( addr ) + " " + data )
-                message = None
-                try:
-                    message = json.loads( data )
-                except:
-                    answer = 'Zprava neni spravne zakodovana (chyba behem zpracovani JSON).'
-                    message = None
-
+                #data = data.decode( 'utf-8' )
+                #print( b'<<<<<<' + str( addr ).encode( 'utf-8' ) + b" " + data )
+                #message = json.loads( data )
+                answer  = ''
+                message = Sender.decode( data )
+                if message is None:
+                    answer = 'Zprava neni spravne zakodovana (chyba behem zpracovani BENCODE).'
+                print( '<<<<<<' + str( addr ) + " " + str(message) )
                 isValid = False
                 msgType = None
-                answer  = ''
                 if message is not None :
                     isValid, msgType = self.parseMessage( message )
                 if msgType is None:
@@ -154,6 +152,7 @@ class Receiver( object ):
                         answer = 'Neznamy typ zpravy.'
                     msgType = '_unknown'
                 elif not isValid:
+                    print( self._obj )
                     answer = self._obj[ 'message' ]
                 elif msgType == '_unknown':
                     answer = self._obj[ 'message' ]
@@ -165,13 +164,20 @@ class Receiver( object ):
                     if self._isNode:
                         answer = 'Prikaz LIST neni na uzlu podporovan'
                     else:
-                        self._sender.ack( self._obj[ 'txid' ], addr[0], addr[1] )
+                        if self._sender.hasAck( 'getlist', addr ):
+                            self._peers = [ { 'peer' : x  } for x in self._obj[ 'peers' ] ]
+                            self._sender.ack( self._obj[ 'txid' ], addr[0], addr[1] )
+                        else:
+                            answer = 'Obdrzel jsem prikaz LIST, ale stale jsem neobdrzel ACK na muj prikaz GETLIST.'
                 elif msgType == 'getlist':
                     if self._isNode:
                         with self._lock:
-                            self._sender.ack( self._obj[ 'txid' ], addr[0], addr[1] )
-                            self._sender.list( [ item[ 'peer' ] for item in self._peers[:] ], addr[0], addr[1] )
-                            self._sender.ackExpected( Protokol.getId(), 'list', addr[0], addr[1] )
+                            if ( self.getIdxOfUserByAddr( addr ) >= 0 ):
+                                self._sender.ack( self._obj[ 'txid' ], addr[0], addr[1] )
+                                self._sender.list( [ item[ 'peer' ] for item in self._peers[:] ], addr[0], addr[1] )
+                                self._sender.ackExpected( Protokol.getId(), 'list', addr[0], addr[1] )
+                            else:
+                                answer = 'Pred prikazem GETLIST je treba se zaregistrovat pomoci HELLO zpravy.'
                     else:
                         answer = 'Prikaz GETLIST neni na peeru podporovan'
                 elif msgType == 'error':
@@ -226,10 +232,14 @@ class Receiver( object ):
 
                 if answer != '':
                     self._sender.error( answer, addr[0], addr[1] )
-        if not self._running:
-            self._thread = Thread( target = _listener )
+        try:
+            sock.bind( ( self._ip, self._port ) )
+            self._thread = Thread( target = _listener)
             self._thread.setDaemon( True )
             self._thread.start()
+            return True
+        except:
+            return False
 
     def parseMessage( self, message ):
         supportedCommands = {
@@ -248,7 +258,6 @@ class Receiver( object ):
         if isinstance( message[ 'type' ], str ) and message[ 'type' ] not in supportedCommands:
             self._obj = { 'message' : 'Neznamy typ zpravy.' }
             return False, '_unknown'
-
         return supportedCommands[ message[ 'type' ] ]( message ), message[ 'type' ]
 
     def _delete( self ):
@@ -330,6 +339,13 @@ class Receiver( object ):
                 return idx
         return -1
 
+    def getIdxOfUserByAddr( self, addr ):
+        for idx, item in enumerate( self._peers ):
+            peer = item[ 'peer' ]
+            if addr[0] == peer.getIp() and addr[1] == int( peer.getPort() ):
+                return idx
+        return -1
+
     def getIdxOfNode( self, key ):
         for idx, node in enumerate( self._db ):
             node = node[ 'node' ]
@@ -399,7 +415,7 @@ class Receiver( object ):
                 else:
                     self._obj = { 'message' : 'Neplatny syntax zpravy LIST (neplatny zaznam PEER RECORD).' }
                     return False
-            self._peers = [ { 'peer' : x  } for x in newDb ]
+            self._obj[ 'peers' ] = newDb
         return True
 
     def update( self, message ):
@@ -407,6 +423,7 @@ class Receiver( object ):
         valid, keys = Receiver.buildObj( message, keys )
         self._obj = keys
         if not valid:
+            self._obj = { 'message' : 'neplatny syntax zpravy UPDATE.' }
             return False
         if self._isNode:
             if not isinstance( keys[ 'db' ], dict ):
@@ -416,15 +433,15 @@ class Receiver( object ):
                 try:
                     ip, port = key.split( ',', 2 )
                 except:
-                    self._obj = { 'message' : 'neplatny syntax zpravy MESSAGE (neplatny zaznam DB RECORD).' }
+                    self._obj = { 'message' : 'neplatny syntax zpravy UPDATE (neplatny zaznam DB RECORD).' }
                     return False
 
                 if not valid_ipv4( ip ) or not valid_port( port ):
-                    self._obj = { 'message' : 'neplatny syntax zpravy MESSAGE (neplatny zaznam DB RECORD).' }
+                    self._obj = { 'message' : 'neplatny syntax zpravy UPDATE (neplatny zaznam DB RECORD).' }
                     return False
 
                 if not isinstance( keys[ 'db' ][ key ], dict ):
-                    self._obj = { 'message' : 'neplatny syntax zpravy MESSAGE (neplatny zaznam DB RECORD).' }
+                    self._obj = { 'message' : 'neplatny syntax zpravy UPDATE (neplatny zaznam DB RECORD).' }
                     return False
 
                 peers = list()
