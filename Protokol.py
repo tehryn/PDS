@@ -1,4 +1,3 @@
-import itertools
 from threading import Lock
 from json import dumps
 
@@ -16,6 +15,8 @@ class Protokol( object ):
     def encode( packet, inc = True ):
         if inc:
             with Protokol._lock:
+                if Protokol._id >= 65535:
+                    Protokol._id = 0
                 Protokol._id += 1
         #return str( packet ).encode( 'utf-8' )
         return str( packet )

@@ -87,10 +87,12 @@ class InputReader( object ):
                 elif line ==  '\\u': # getlist
                     self._append( { 'type' : 'getlist' } )
                 elif line.startswith( '\\h' ): # help
-                    self._append( { 'type' : 'print', 'verbose' : '[\\l] Vypise seznam znamych uzivatelu\n[\\u] Aktualizuje seznam uzivatelu\n[\\r ipv4 port] pripoji se na zadany uzel\n[\\w username message] odesle zpravu uzivateli [\\exit] Ukonci aplikaci' } )
+                    self._append( { 'type' : 'print', 'verbose' : '[\\l] Vypise seznam znamych uzivatelu\n[\\u] Aktualizuje seznam uzivatelu\n[\\r ipv4 port] pripoji se na zadany uzel\n[\\w username message] odesle zpravu uzivateli\n[\\exit] Ukonci aplikaci' } )
                 elif line == '\\exit':
                     self._append( { 'type' : 'exit' } )
                     break
+                else:
+                    self._append( { 'type' : 'error', 'verbose' : 'Neznamy prikaz, zadejte "\\h" pro zobrazeni napovedy' } )
 
     def _stdinNode( self ):
         #signal.signal( signal.SIGINT, self._kill)
@@ -112,7 +114,7 @@ class InputReader( object ):
                         ipv4 = line[idx1+1:idx2]
                         port = line[idx2+1:]
                         if not valid_ipv4( ipv4 ) or not valid_port( port ):
-                            self._append( { 'type' : 'error', 'verbose' : 'Neplatna ipv4 adresa nebo port."' } )
+                            self._append( { 'type' : 'error', 'verbose' : 'Neplatna ipv4 adresa nebo port.' } )
                         else:
                             self._append( { 'type' : 'connect', 'ipv4' : ipv4, 'port' : int( port ) } )
                 elif line == '\\s': # sync
@@ -122,12 +124,14 @@ class InputReader( object ):
                 elif line == '\\n': # neighbors
                     self._append( { 'type' : 'neighbors' } )
                 elif line == '\\h': # help
-                    self._append( { 'type' : 'print', 'verbose' : '[\\c ipv4 port] Navaze spojeni se zadanym uzlem\n[\\s] Vynuti synchronizaci s ostatnimy uzly\n[\\l] Vypise aktualni databazi peeru a jejich uzlu\n[\\n] Vypise databazi znamych uzlu\n[\\d] Odpodi se od ostatnich uzlu [\\exit] Ukonci aplikace' } )
+                    self._append( { 'type' : 'print', 'verbose' : '[\\c ipv4 port] Navaze spojeni se zadanym uzlem\n[\\s] Vynuti synchronizaci s ostatnimy uzly\n[\\l] Vypise aktualni databazi peeru a jejich uzlu\n[\\n] Vypise databazi znamych uzlu\n[\\d] Odpodi se od ostatnich uzlu\n[\\exit] Ukonci aplikace' } )
                 elif line == '\\d': # disconnect
                     self._append( { 'type' : 'disconnect' } )
                 elif line == '\\exit':
                     self._append( { 'type' : 'exit' } )
                     break
+                else:
+                    self._append( { 'type' : 'error', 'verbose' : 'Neznamy prikaz, zadejte "\\h" pro zobrazeni napovedy' } )
 
     def __iter__( self ):
         with self._lock:
