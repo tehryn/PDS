@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
+"""
+Author: Jiri Matejka -- xmatej52
+Description: Implementace peeru
+"""
+
 import sys
 import socket
+import signal
 from threading import Lock
 from Functions import get_setting, print_help
 from Sender import Sender
@@ -87,6 +93,7 @@ possible_arguments = [
     },
 ]
 
+# zpracovani argumentu
 settings = dict()
 try:
     settings = get_setting( possible_arguments, sys.argv[1:] )
@@ -98,32 +105,47 @@ except Exception as e:
         sys.stderr.write( str( e ) + '\n' )
         exit( invalid_arguments )
 
-sock        = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
-sock_sender = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
-
 regIp    = settings[ 'reg-ip' ][0]
 regPort  = int( settings[ 'reg-port' ][0] )
 chatIp   = settings[ 'chat-ip' ][0]
 chatPort = int( settings[ 'chat-port' ][0] )
 
+# prijem zprav a odesilani odpovedi
+sock     = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
 sendLock = Lock()
 inLonck  = Lock()
 sender = Sender( sock, sendLock )
 receiver = Receiver( chatIp, chatPort, False, sender, settings[ 'username' ][0] )
 receiver.start( sock )
 
+# udrzeni spojeni s uzlem
 keeper = ConnectionKeeper()
 keeper.hello( sender, settings['username'][0], chatIp, chatPort , regIp, regPort )
 
+# nacitani prikazu od rpc a uzivatele
 filename = '.' + settings[ 'id' ][0] + '.peercommands'
 reader = InputReader( filename, settings['username'][0] )
+
+def thisIsTheEnd( _, __ ):
+    keeper.stop()
+    reader.stop()
+    exit( 0 )
+
+signal.signal( signal.SIGINT, thisIsTheEnd)
+signal.signal( signal.SIGTERM, thisIsTheEnd)
+
 while True:
+    # ceka na prikazy
     reader.wait()
+    # zpracovava jednotlive prikazy
     for cmd in reader:
         if cmd[ 'type' ] == 'error' and 'verbose' in cmd:
             sys.stderr.write( cmd[ 'verbose' ] + '\n' )
         elif cmd[ 'type' ] == 'print' and 'verbose' in cmd:
             sys.stdout.write( cmd[ 'verbose' ] + '\n' )
+        elif cmd[ 'type' ] == 'exit':
+            keeper.stop()
+            exit( 0 )
         else:
             valid, message = receiver.procCommand( cmd, ( regIp, regPort ) )
             if valid:

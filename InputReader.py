@@ -1,3 +1,7 @@
+"""
+Author: Jiri Matejka -- xmatej52
+Description: Reads instructions from file and stdin.
+"""
 import os
 import json
 import sys

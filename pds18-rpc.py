@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
-import socket
+"""
+Author: Jiri Matejka -- xmatej52
+Description: Implementace RPC
+"""
 import sys
-from FileLock import FileLock
-from time import sleep
-from Receiver import Receiver
-from Sender import Sender
-from threading import Lock, Thread
-from random import randint
-from Functions import get_setting, print_help, get_exception_info, valid_ipv4, valid_port
 from json import dumps
+from FileLock import FileLock
+from Functions import get_setting, print_help, get_exception_info, valid_ipv4, valid_port
 invalid_arguments = 1
 
 author = "Author:\n" + \
@@ -99,7 +97,7 @@ possible_arguments = [
         'description'  : 'Parametr prikazu reconnect a connect. Urcuje port serveru.'
     },
 ]
-
+# zpracovani argumentu
 settings = dict()
 try:
     settings = get_setting( possible_arguments, sys.argv[1:] )
@@ -112,12 +110,15 @@ except Exception as e:
         sys.stderr.write( str( e ) + '\n' )
         exit( invalid_arguments )
 
+# kontrola ze nezadal --peer a --node
 if 'node' in settings and 'peer' in settings:
     sys.stderr.write( 'Nelze spustit program se zadanymi parametry --node a --peer, zadejte pouze jeden z nich.\n' )
     exit( invalid_arguments )
 
+# zpracovani prikazu pro peer
 if 'peer' in settings:
     filename = '.' + settings['id'][0] + '.peercommands'
+    # zamek na soubor
     lock = FileLock( filename )
     if settings[ 'cmd' ][0] == 'message':
         if 'to' not in settings:
@@ -151,9 +152,10 @@ if 'peer' in settings:
         sys.stderr.write( 'Prikaz ' + settings['cmd'][0] + ' neni na peeru podporovan.\n' )
         exit( invalid_arguments )
 
+# zpracovani prikazu pro uzel
 elif 'node' in settings:
     filename = '.' + settings['id'][0] + '.nodecommands'
-    lock = FileLock( filename )
+    lock = FileLock( filename ) # zamek
     if settings[ 'cmd' ][0] == 'connect':
         if 'ipv4' not in settings:
             sys.stderr.write( 'Prikaz connect vyzaduje parametry --ipv4 a --port\n' )

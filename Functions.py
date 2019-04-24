@@ -1,7 +1,7 @@
 """
 Author: Jiri Matejka (xmatej52)
-
-V tomto modulu jsou implementovany společné funkce.
+Created: 22-08-2017
+Description: Implementation of common methods
 """
 import sys
 import traceback

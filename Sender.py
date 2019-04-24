@@ -1,4 +1,7 @@
-import itertools
+"""
+Author: Jiri Matejka -- xmatej52
+Description: Sender sends messages to specified addresses and manage database of ack messages
+"""
 import json
 from time import sleep, time
 from sys import stderr
@@ -117,7 +120,7 @@ class Sender( object ):
 
     def _send( self, data, addr ):
         with self._lock:
-            print( '>>>>>>' + str(addr) + ' ' + data )
+            #print( '>>>>>>' + str(addr) + ' ' + data )
             try:
                 obj = json.loads( data )
                 #print( self._bencode( obj ) )

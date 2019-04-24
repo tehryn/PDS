@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Implementace registracniho uzlu
-Autor: Jiri Matejka
+Author: Jiri Matejka -- xmatej52
+Description: Implementation of node
 """
 import sys
 import socket
@@ -99,7 +99,9 @@ signal.signal( signal.SIGINT, thisIsTheEnd)
 signal.signal( signal.SIGTERM, thisIsTheEnd)
 
 while True:
+    # cekam na prikazy
     reader.wait()
+    # zpracovavam vsechny nove prikazy
     for cmd in reader:
         if cmd[ 'type' ] == 'error' and 'verbose' in cmd:
             sys.stderr.write( cmd[ 'verbose' ] + '\n' )

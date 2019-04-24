@@ -193,14 +193,22 @@
         \subsection{Registrační uzel}
             Aplikace registračního uzlu je implementována v souboru \texttt{pds18-node.py}. Aplikaci lze ovládat zadáním příkazů na
             standartní vstup nebp pomocí aplikace RPC, která je popsána níže. Spuštění aplikace:
-            \verb+pds18-node.py --id N --reg-ipv4 IPV4 --reg-port PORT+
+
+
+            \fontsize{11pt}{12pt}\verb+pds18-node.py --id N --reg-ipv4 IPV4 --reg-port PORT+
+            \begin{itemize}
+                \item \verb+--id+ -- Unikátní identifikátor uzlu v rámci operačního systému
+                \item \verb+--reg-ipv4+ -- IP adresa uzlu, na kterém bude uzel přijímat zprávy
+                \item \verb+--reg-port+ -- Port uzlu, na kterém bude uzel přijímat zprávy
+            \end{itemize}
 
             Po spuštění aplikace uzel vytvoří vlákno, které pravidelně kontroluje databázi známých sousedů a případně odesílá
             zprávy typu \texttt{UPDATE}. Dále vytvoří vlákno, které pravidelně kontroluje databázi registrovaných peerů a
             známých uzlů a případně tuto databázi promazává. Další vytvořené vlákno zpracovává přijaté zprávy a tvoří na ně
-            odpovědi. A poslední 2 vlákna, co vzniknou načítají příkazy ze souboru (kam je zadává aplikace RPC) a ze standartního
+            odpovědi. V neposlední řadě se vytvoří další vlákno, zpracovávající databázi očekávaných \texttt{ACK} zpráv.
+            A poslední 2 vlákna, co vzniknou, načítají příkazy ze souboru (kam je zadává aplikace RPC) a ze standartního
             vstupu (kam je zadává sám uživatel). Rodičovský proces pouze tyto příkazy předává ostatním vláknům a případně vypisuje
-            chyby nebo zpracované informace na chybový nebo standartní výstup.
+            chyby nebo zpracované informace na chybový nebo standartní výstup. Uzel tedy vytvoří dohromady 6 vláken.
 
             Podporované příkazy zadané na standartní vstup:
             \begin{itemize}
@@ -209,7 +217,72 @@
                 \item \verb+\l+ -- Vypíše aktualní databázi uzlů a jejich peerů
                 \item \verb+\n+ -- Vypise databázi znamých uzlů
                 \item \verb+\d+ -- Odpojí se od ostatnich uzlů
+                \item \verb+\h+ -- Vypíše nápovědu
                 \item \verb+\exit+ -- Ukončí aplikaci
+            \end{itemize}
+        \subsection{Peer}
+            Implementace apliakce peeru se nachází v souboru \texttt{pds18-peer.py}. Stejně jako uzel, i tuto aplikaci lze
+            ovládat pomocí RPC nebo zadávání příkazů na standartní vstup. Spuštění aplikace:
+
+
+            \verb+./pds18-peer.py --id N --reg-ipv4 IPV4 --reg-port PORT --chat-ipv4 IPV4 --chat-port PORT --username USERNAME+
+            \begin{itemize}
+                \item \verb+--id+ -- Unikátní identifikátor peeru v rámci operačního systému
+                \item \verb+--reg-ipv4+ -- IP adresa uzlu, ke kterému se peer zaregistruje
+                \item \verb+--reg-port+ -- Port uzlu, ke kterému se peer zaregistruje
+                \item \verb+--chat-ipv4+ -- IP adresa peeru, na které bude přijímat zprávy
+                \item \verb+--chat-port+ -- Port peeru, na kterém bude přijímat zprávy
+                \item \verb+--username+ -- Unikátní uživatelské jméno v rámci celé sítě
+            \end{itemize}
+
+            Po spuštění aplikace se vytvoří vlákno, které provede registraci peeru k uzlu a udržuje spojení
+            pravidelným odesíláním zpráv typu \texttt{HELLO}. Dále se vytvoří vlákno, které zpracovává přijaté
+            zprávy a vlákno, které zpracovává databázi očekávaných \texttt{ACK} zpráv. Protože ovlání aplikace je velmi
+            podobné uzlu a je implementováno v jednom modulu, i zde je zapotřebí dalších 2 vláken, která zpracovávající
+            příkazy od uživatele a RPC. Dohromady je pro jeden peer potřeba 5 vláken.
+
+            Podporované příkazy zadané na standartní vstup:
+            \begin{itemize}
+                \item \verb+\l+ -- Vypíše seznam známých uživatelů
+                \item \verb+\u+ -- Aktualizuje seznam uživatelů
+                \item \verb+\r ipv4 port+ -- Připojí se na zadaný uzel
+                \item \verb+\w username message+ -- Odešle zprávu zadanému uživateli
+                \item \verb+\h+ -- Vypíše nápovědu
+                \item \verb+\exit+ -- Ukončí aplikaci
+            \end{itemize}
+        \subsection{RPC}
+            RPC slouží k ovládání uzlu nebo peeru, pokud není možnost zadat příkazy na standartní vstup (například když proces uzlu běží na pozadí).
+            Implementace RPC je umístěna v souboru \texttt{pds18-rpc.py} a soubor lze spustit pomocí příkazu:
+
+            \verb+./pds18-rpc --id N --peer|node --command CMD --PARAMETR_1 HODNOTA_1 --PARAMETR_2 HODNOTA_2 ...+
+            \begin{itemize}
+                \item \verb+--id+ -- Identifikátor peeru nebo uzlu, kterému bude předán příkaz
+                \item \verb+--peer+ -- Určuje, že se jedná o příkaz pro peer
+                \item \verb+--node+ -- Určuje, že se jedná o příkaz pro uzel
+                \item \verb+--command+ -- Identifikátor příkazu
+                \item \verb+--PARAMETR_1+ -- Parametr příkazu a jeho hodnota
+            \end{itemize}
+
+            Chování RPC je jednoduché. RPC po spuštění zpracuje zadané argumenty a zapíše příkaz do souboru. Na peeru jsou momentálně podporovány
+            příkazy \texttt{message} (odeslání zprávy), \texttt{getlist} (aktualizace databáze známých uživatelů),
+            \texttt{peers} (vypíše seznam peerů) a \texttt{reconnect} (změna registračního uzlu).
+            Tyto příkazy se potom zadají při spuštění RPC následujícím způsobem:
+            \begin{itemize}
+                \item \verb+-command message --from USERNAME --to USERNAME --message TEXT+
+                \item \verb+--command getlist+
+                \item \verb+--command peers+
+                \item \verb+--command reconnect --reg-ipv4 IPV4 --reg-port PORT+
+            \end{itemize}
+
+            Co se uzlu týče, jsou implementovány příkazy \texttt{database} (Zobrazí aktualní databázi peerů),
+            \texttt{neighbors} (zobrazí aktuální databázy známých uzlů), \texttt{connect} (naváže komunikaci se zadaným uzlem),
+            \texttt{disconnect} (přeruší komunikaci se všemy uzly) a \texttt{sync} (vynutí synchronizaci databází s ostatnímy uzly).
+            \begin{itemize}
+                \item \verb+--command database+
+                \item \verb+--command neighbors+
+                \item \verb+--command connect --reg-ipv4 IPV4 --reg-port PORT+
+                \item \verb+--command disconnect+
+                \item \verb+--command sync+
             \end{itemize}
 
     \section{Testování}
