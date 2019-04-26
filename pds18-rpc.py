@@ -147,6 +147,7 @@ if 'peer' in settings:
     elif settings[ 'cmd' ][0] == 'peers':
         with lock:
             with open( filename, 'a' ) as file:
+                file.write( '{ "type" : "getlist" }\n' )
                 file.write( '{ "type" : "peers" }\n' )
     else:
         sys.stderr.write( 'Prikaz ' + settings['cmd'][0] + ' neni na peeru podporovan.\n' )

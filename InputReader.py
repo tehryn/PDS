@@ -87,6 +87,7 @@ class InputReader( object ):
                         else:
                             self._append( { 'type' : 'reconnect', 'ipv4' : ipv4, 'port' : int( port ) } )
                 elif line == '\\l': # peers
+                    self._append( { 'type' : 'getlist' } )
                     self._append( { 'type' : 'peers' } )
                 elif line ==  '\\u': # getlist
                     self._append( { 'type' : 'getlist' } )

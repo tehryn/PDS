@@ -145,12 +145,29 @@ class Receiver( object ):
 
             # peers command - show database of peers
             elif cmd[ 'type' ] == 'peers':
+                i = 0
+                test = ''
                 with self._lock:
                     if self._peers:
                         head = 'Uzivatele:\n  '
                         peers = [ x[ 'peer' ].getUsername() for x in self._peers ]
-                        return True, head + '\n  '.join( peers )
-                return True, 'V databazi se nenachazi jediny uzivatel, pro synchronizaci databaze pouzijte prikaz getlist.'
+                        test = head + '\n  '.join( peers )
+                    else:
+                        test = 'V databazi se nenachazi zadni uzivatele.'
+                while i < 10:
+                    sleep(0.2)
+                    i += 1
+                    ret = ''
+                    with self._lock:
+                        if self._peers:
+                            head = 'Uzivatele:\n  '
+                            peers = [ x[ 'peer' ].getUsername() for x in self._peers ]
+                            ret = head + '\n  '.join( peers )
+                        else:
+                            ret = 'V databazi se nenachazi zadni uzivatele.'
+                    if test != ret:
+                        return True, ret
+                return True, test
 
             # reconnect command - special command, not for receiver.
             elif cmd[ 'type' ] == 'reconnect':
@@ -261,6 +278,9 @@ class Receiver( object ):
                                         idx = self.getIdxOfUser( peer.getUsername() )
                                         if idx < 0:
                                             self._peers.append( { 'peer' : peer, 'expires' : None, 'dbId' : key } )
+                                        elif self._peers[idx]['dbId'] or self._peers[idx]['dbId'] != key:
+                                            self._sender.error( 'Behem synchronizace byl nalezen duplicitni uzivatel ' + peer.getUsername() + ' zaznam uzivatele se ignoruje.', addr[0], addr[1] )
+                                            sys.stderr.write( 'Uzel ' + srvIp + ':' + str( srvPort ) + ' obsahuje duplicitniho uzivatele ' + peer.getUsername() + '. Zaznam uzivatele nebyl synchronizovan.\n' )
                                     idx = self.getIdxOfNode( key )
                                     if ( idx < 0 ):
                                         self._db.append( { 'ipv4' : srvIp, 'port' : srvPort, 'node' : node, 'expires' : expires } )

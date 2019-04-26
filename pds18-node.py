@@ -73,14 +73,20 @@ except Exception as e:
         exit( invalid_arguments )
 
 regIp   = settings[ 'reg-ip' ][0]
-regPort = int( settings[ 'reg-port' ][0] )
+try:
+    regPort = int( settings[ 'reg-port' ][0] )
+except:
+    sys.stderr.write( 'Invalid port\n' )
+    exit( invalid_arguments )
 
 # Prijem a odesilani zprav
 sock     = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
 lock     = Lock()
 sender   = Sender( sock, lock )
 receiver = Receiver( regIp, regPort, True, sender )
-receiver.start( sock )
+if ( not receiver.start( sock ) ):
+    sys.stderr.write( 'Unable to start node adress ' + regIp + ' and port ' + str(regPort) + '\n' )
+    exit( invalid_arguments )
 
 # Pravidelne odesilani update
 keeper = ConnectionKeeper()

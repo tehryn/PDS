@@ -106,9 +106,17 @@ except Exception as e:
         exit( invalid_arguments )
 
 regIp    = settings[ 'reg-ip' ][0]
-regPort  = int( settings[ 'reg-port' ][0] )
 chatIp   = settings[ 'chat-ip' ][0]
-chatPort = int( settings[ 'chat-port' ][0] )
+try:
+    regPort = int( settings[ 'reg-port' ][0] )
+except:
+    sys.stderr.write( 'Invalid value of reg-port\n' )
+    exit( invalid_arguments )
+try:
+    chatPort = int( settings[ 'chat-port' ][0] )
+except:
+    sys.stderr.write( 'Invalid value of chat-port\n' )
+    exit( invalid_arguments )
 
 # prijem zprav a odesilani odpovedi
 sock     = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
@@ -116,7 +124,9 @@ sendLock = Lock()
 inLonck  = Lock()
 sender = Sender( sock, sendLock )
 receiver = Receiver( chatIp, chatPort, False, sender, settings[ 'username' ][0] )
-receiver.start( sock )
+if ( not receiver.start( sock ) ):
+    sys.stderr.write( 'Unable to start node adress ' + regIp + ' and port ' + str(regPort) + '\n' )
+    exit( invalid_arguments )
 
 # udrzeni spojeni s uzlem
 keeper = ConnectionKeeper()
