@@ -125,7 +125,7 @@ inLonck  = Lock()
 sender = Sender( sock, sendLock )
 receiver = Receiver( chatIp, chatPort, False, sender, settings[ 'username' ][0] )
 if ( not receiver.start( sock ) ):
-    sys.stderr.write( 'Unable to start node adress ' + regIp + ' and port ' + str(regPort) + '\n' )
+    sys.stderr.write( 'Unable to start peer at adress ' + chatIp + ' and port ' + str(chatPort) + '\n' )
     exit( invalid_arguments )
 
 # udrzeni spojeni s uzlem

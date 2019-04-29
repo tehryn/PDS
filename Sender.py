@@ -140,7 +140,7 @@ class Sender( object ):
             elif isinstance( value, dict ):
                 value = Sender._bencode( value )
             else:
-                value = value.encode( 'utf8' )
+                value = value.encode( 'utf-8' )
                 value = str( len( value ) ).encode( 'utf-8' ) + b':' + value
             key = key.encode( 'utf-8' )
             key = str( len( key ) ).encode( 'utf-8' ) + b':' + key

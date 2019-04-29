@@ -1,0 +1,22 @@
+# Projekt do předmětu Přenos dat, počítačové sítě a protokoly
+
+Cílem projektu je implementace chatovací peer2peer sítě.
+
+## Spuštění
+
+Projekt je určen pro operační systémy linux, nicméně zvoleným jazykem je python3 a tudíž by neměl být problém ho spustit
+i na jiných operačních systémech.
+
+Programy lze spustit následujícími příkazy:
+Peer: python3 pds18-peer.py --id N --reg-ipv4 IPV4 --reg-port PORT+ --chat-ipv4 IPV4 --chat-port PORT --username USERNAME
+Uzel: python3 pds18-node.py --id N --reg-ipv4 IPV4 --reg-port PORT
+RPC: python3 pds18-rpc --id N --peer|node --command CMD --PARAMETR_1 HODNOTA_1 --PARAMETR_2 HODNOTA_2 ...
+
+## Rozsah implementace
+
+Projekt byl implementován v rozahu, které vyžaduje zadání projektu. Žádné volitelné rozšíření
+nebylo implementováno.
+
+## Autor
+
+Autorem projektu je Jiří Matějka (xmatej52)

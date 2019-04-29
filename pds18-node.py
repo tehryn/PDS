@@ -85,7 +85,7 @@ lock     = Lock()
 sender   = Sender( sock, lock )
 receiver = Receiver( regIp, regPort, True, sender )
 if ( not receiver.start( sock ) ):
-    sys.stderr.write( 'Unable to start node adress ' + regIp + ' and port ' + str(regPort) + '\n' )
+    sys.stderr.write( 'Unable to start node at adress ' + regIp + ' and port ' + str(regPort) + '\n' )
     exit( invalid_arguments )
 
 # Pravidelne odesilani update
